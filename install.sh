@@ -120,6 +120,34 @@ else
   echo "Tomcat package can not be found，This installation will be exit."
   exit 1
 fi
+#auto boot config
+if [ -f /usr/lib/systemd/system/tomcat.service ] ;then
+  echo "Apache tomcat auto-starting  is already configed. "
+else
+  touch /usr/lib/systemd/system/tomcat.service
+  cat >>/usr/lib/systemd/system/tomcat.service<<EOF
+[Unit]
+Description=Tomcat7
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+#Environment='JAVA_HOME=/usr/local/jdk1.7.0_75/'
+Environment='CATALINA_PID=/usr/local/apache-tomcat8/bin/tomcat.pid'
+Environment='CATALINA_HOME=/usr/local/apache-tomcat8/'
+Environment='CATALINA_BASE=/usr/local/apache-tomcat8/'
+
+
+WorkingDirectory=/usr/local/apache-tomcat8/
+
+ExecStart=/usr/local/apache-tomcat8/bin/startup.sh
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+fi
 
 echo "sms depolyment..."
 
@@ -166,11 +194,14 @@ do
      #cat $SMS_HOME/sms-db.sql
      cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$password -e"source sms-db.sql;"
      echo "vcpe-manage-web depolyment..."
+     mkdir /usr/local/apache-tomcat8/backup
+     cp /usr/local/apache-tomcat8/webapps/vcpe* /usr/local/apache-tomcat8/backup/
      cp $SMS_HOME/$SMS_PACKAGE/vcpe-*.war /usr/local/apache-tomcat8/webapps
      echo "Done."
      break
   fi
 done
+#start apache tomcat8...
 
 
 #flexinc depolyment
