@@ -99,9 +99,13 @@ else
    else
     password=$passwd
   fi
-  mysql -uroot -e"update mysql.user set mysql.user.password=password('$password'),mysql.user.password_expired='Y' where mysql.user.user='root';"
+  mysql -uroot -e"update mysql.user set mysql.user.password=password('$password') where mysql.user.user='root';"
   sed -i s/skip-grant-tables/\#skip-grant-tables/g /etc/my.cnf
   service mysql restart
+  echo "****************************************************************************************************************"
+  echo "Now we will get into mysql terminal,please input "SET PASSWORD=PASSWORD('you new password here');" and then quit. "
+  echo "****************************************************************************************************************"
+  sleep 5
   #mysql -uroot -p$password -e"SET PASSWORD = PASSWORD('$password');"
 #  mysql -uroot -p$password  <<EOF 2>/dev/null
 #    SET PASSWORD = PASSWORD('$password');
@@ -204,7 +208,5 @@ do
      break
   fi
 done
-
-
 
 #flexinc depolyment
