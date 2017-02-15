@@ -204,7 +204,7 @@ do
      break
   fi
 done
-#start apache tomcat8...
+
 
 
 #flexinc depolyment
