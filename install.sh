@@ -33,7 +33,7 @@ else
 fi
 #Initialization
 #echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-yum install -y  vim autoconf net-tools > /dev/null
+yum install -y  vim autoconf net-tools unzip > /dev/null
 
 #java install
 echo "Installing java package....[default:$JAVA_VERSION]"
@@ -122,12 +122,55 @@ else
 fi
 
 echo "sms depolyment..."
-#database import
-cd $SMS_HOME ;ls db_vcpe_manage* > $SMS_HOME/sms-db.sql
-sed -i s/db_vcpe/source\ db_vcpe/g $SMS_HOME/sms-db.sql
-#cat $SMS_HOME/sms-db.sql
-cd $SMS_HOME ; mysql -uroot -p$password -e"source sms-db.sql;"
 
-#vcpe-manage-web depolyment
+echo -n "The sms package directory is [default:/home/vcpe/sms]:"
+read sms_home
+if [ -z $sms_home ];then
+  if [ -d $SMS_HOME ]; then
+    echo "Installation begin..."
+  else
+    echo "The directory can not be found,This installation will be exit."
+    exit 1
+  fi
+else
+  if [ -d $SMS_HOME ];then
+    SMS_HOME=$sms_home
+  else
+   echo "The directory can not be found,This installation will be exit."
+   exit 1
+  fi
+fi
+while :
+do
+  i=1
+  SMS_VERSION=()
+  echo "SMS version list:"
+  for SMS_PACKAGE in $(ls $SMS_HOME)
+  do
+      echo "[$i] : $SMS_PACKAGE"
+      SMS_VERSION[$i]=$SMS_PACKAGE
+      i=`expr $i + 1`
+  done
+  echo -n "Pls choose sms version:"
+  read version
+  if [ -z $version ] || [ $version -ge $i ] ;then
+    echo "Pls input the correct version number!"
+    continue
+   else
+     SMS_PACKAGE=${SMS_VERSION[$version]}
+     echo $SMS_PACKAGE
+
+     echo "database import..."
+     cd $SMS_HOME/$SMS_PACKAGE ;ls db_vcpe_manage* > $SMS_HOME/$SMS_PACKAGE/sms-db.sql
+     sed -i s/db_vcpe/source\ db_vcpe/g $SMS_HOME/$SMS_PACKAGE/sms-db.sql
+     #cat $SMS_HOME/sms-db.sql
+     cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$password -e"source sms-db.sql;"
+     echo "vcpe-manage-web depolyment..."
+     cp $SMS_HOME/$SMS_PACKAGE/vcpe-*.war /usr/local/apache-tomcat8/webapps
+     echo "Done."
+     break
+  fi
+done
+
 
 #flexinc depolyment
