@@ -147,6 +147,8 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 EOF
+
+systemctl enable tomcat.service
 fi
 
 echo "sms depolyment..."
@@ -197,6 +199,7 @@ do
      mkdir /usr/local/apache-tomcat8/backup
      cp /usr/local/apache-tomcat8/webapps/vcpe* /usr/local/apache-tomcat8/backup/
      cp $SMS_HOME/$SMS_PACKAGE/vcpe-*.war /usr/local/apache-tomcat8/webapps
+     systemctl start tomcat.service
      echo "Done."
      break
   fi
