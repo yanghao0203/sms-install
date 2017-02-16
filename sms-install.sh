@@ -10,9 +10,55 @@
 #  source install.config
 #fi
 VCPE_HOME=/home/vcpe
-SMS_HOME=$VCPE_HOME/sms
+SMS_HOME=$VCPE_HOME/SMS
+ONOS_HOME=$VCPE_HOME/ONOS
 JAVA_VERSION=java-1.8.0-openjdk
 password=123456
+isCluster=n
+prifix=`ip r sh | grep default | awk '{print $3}' | awk -F. '{print $1"."$2"."$3}'`
+VCPE_IP=`ifconfig | grep $prifix | awk '{print $2}'`
+FLEXINC_IP=`ifconfig | grep $prifix | awk '{print $2}'`
+FLEXINC_IP1=`ifconfig | grep $prifix | awk '{print $2}'`
+FLEXINC_IP2=`ifconfig | grep $prifix | awk '{print $2}'| awk -F. '{print $1"."$2"."$3"."($4+1)}'`
+FLEXINC_IP3=`ifconfig | grep $prifix | awk '{print $2}'| awk -F. '{print $1"."$2"."$3"."($4+2)}'`
+
+function judge_ip(){
+
+        local $1 2>/dev/null
+        TMP_TXT=/tmp/iptmp.txt
+        echo $1 > ${TMP_TXT}
+        IPADDR=`grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' ${TMP_TXT}`
+
+        if [ ! -z "${IPADDR}" ];then
+                local j=0;
+
+                for ((i=1;i<=4;i++))
+                do
+                        local IP_NUM=`echo "${IPADDR}" |awk -F. "{print $"$i"}"`
+
+                        if [ "${IP_NUM}" -ge 0 -a "${IP_NUM}" -le 255 ];then
+                                ((j++));
+                        else
+                                return 1
+                        fi
+                done
+
+                if [ "$j" -eq 4 ];then
+
+            read -n 1 -p "The IP you enter is${IPADDR},sure：Y|y；Re-enter：R|r：" OK
+            case ${OK} in
+                Y|y) return 0;;
+                R|r) return 1;;
+                *) return 1;;
+            esac
+                else
+                        return 1
+                fi
+        else
+                return 1
+        fi
+}
+
 
 echo -n "The VCPE package directory is [default:/home/vcpe]:"
 read vcpe_home
@@ -155,9 +201,9 @@ EOF
 systemctl enable tomcat.service
 fi
 
-echo "sms depolyment..."
+echo "SMS depolyment..."
 
-echo -n "The sms package directory is [default:/home/vcpe/sms]:"
+echo -n "The sms package directory is [default:/home/vcpe/SMS]:"
 read sms_home
 if [ -z $sms_home ];then
   if [ -d $SMS_HOME ]; then
@@ -210,3 +256,88 @@ do
 done
 
 #flexinc depolyment
+echo "ONOS depolyment..."
+echo -n "The ONOS package directory is [default:/home/vcpe/ONOS]:"
+read onos_home
+if [ -z $onos_home ];then
+  if [ -d $ONOS_HOME ]; then
+    echo "Installation begin..."
+  else
+    echo "The directory can not be found,This installation will be exit."
+    exit 1
+  fi
+else
+  if [ -d $onos_home ];then
+    ONOS_HOME=$onos_home
+  else
+   echo "The directory can not be found,This installation will be exit."
+   exit 1
+  fi
+fi
+
+echo -n "the cluster scene:n/y[default:n]"
+read scene
+while 1 ; do
+  if [ x"$scene" = x"y" ] ;then
+    sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
+    while true ; do
+      echo -n "ifconfig cluster network card ips:[default:$FLEXINC_IP1,$FLEXINC_IP2,$FLEXINC_IP3]"
+      read ips
+      if [ -z $ips ];then
+        ip_array=($FLEXINC_IP1 $FLEXINC_IP2 $FLEXINC_IP3)
+      else
+        ip_array=()
+        ip_array[0]=`echo $ips | awk -F',' '{print  $1}'`
+        ip_array[1]=`echo $ips | awk -F',' '{print  $2}'`
+        ip_array[2]=`echo $ips | awk -F',' '{print  $3}'`
+        done
+      fi
+      for ((a=0;<3;a++)) ;do
+        judge_ip "${ip_array[$a]}"
+        j=`echo $?`
+        until [ "$j" -eq 0 ];do
+          echo -e "\033[31m you input error IP：${ip_array[$a]} ====>>>>\033[0m"
+          echo  "example "192.168.1.1""
+          break
+        done
+        b=$[a + 1]
+        sed -i s/FLEXINC_IP$b=.*/FLEXINC_IP$b=${ip_array[$a]}/g $ONOS_HOME/flexinc-run
+      done
+      break 2
+    done
+
+  elif [ x"$scene" = x"n" ] || [ -z $scene ] ; then
+    sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
+    while true ; do
+      echo -n "ifconfig network card ip:[default:$FLEXINC_IP]"
+      read ipnew
+      if [ -z $ipnew ];then
+          sed -i s/FLEXINC_IP=.*/FLEXINC_IP=$FLEXINC_IP/g $ONOS_HOME/flexinc-run
+      else
+        judge_ip “${ipnew}”
+        i=`echo $?`
+        until [ "$i" -eq 0 ];do
+          echo -e "\033[31m you input error IP：${ipnew} ====>>>>\033[0m"
+          echo  "example “192.168.1.1”"
+          break
+        done
+        sed -i s/FLEXINC_IP=.*/FLEXINC_IP=$ipnew/g $ONOS_HOME/flexinc-run
+      fi
+     break 2
+   done
+  else
+    echo "Pls input correct value."
+    continue
+  fi
+done
+
+#STB_WEB_URL
+sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/vcpe-manage-web\/gw\"/g" $ONOS_HOME/flexinc-run
+
+chmod a+x $ONOS_HOME/flexinc-run
+cp $ONOS_HOME/* /opt
+cd /opt ; ./flexinc-run install FlexINC_*.tar.gz
+
+source /etc/profile
+
+cd /opt ; ./flexinc-run start
