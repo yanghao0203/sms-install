@@ -13,6 +13,7 @@ CURRENT_TIME=`date +20%y%m%d_%H%M%S`
 VCPE_HOME=/home/vcpe
 SMS_HOME=$VCPE_HOME/SMS
 ONOS_HOME=$VCPE_HOME/ONOS
+MANO_HOME=$VCPE_HOME/MANO
 JAVA_VERSION=java-1.8.0-openjdk
 old_password=
 new_password=123456
@@ -158,7 +159,7 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION
 flush privileges;
 quit;
 EOF
-
+          chkconfig mysql on
           echo "Done."
         fi
 }
@@ -207,10 +208,7 @@ EOF
 
 #sms depoly
 function sms_install {
-        system_init
-        java_install
-        mysql_install
-        tomcat_install
+
         echo "SMS depolyment..."
         echo -n "The VCPE package directory is [default:/home/vcpe]:"
         read vcpe_home
@@ -229,7 +227,10 @@ function sms_install {
            exit 1
           fi
         fi
-
+        system_init
+        java_install
+        mysql_install
+        tomcat_install
         echo -n "The sms package directory is [default:/home/vcpe/SMS]:"
         read sms_home
         if [ -z $sms_home ];then
@@ -286,11 +287,80 @@ function sms_install {
 
 function mano_install {
   #statements
+  echo "MANO depolyment..."
+  echo -n "The vcpe package directory is [default:/home/vcpe]:"
+  read vcpe_home
+  if [ -z $vcpe_home ];then
+    if [ -d $VCPE_HOME ]; then
+      echo "Installation begin..."
+    else
+      echo "The directory can not be found,This installation will be exit."
+      exit 1
+    fi
+  else
+    if [ -d $vcpe_home ];then
+      VCPE_HOME=$vcpe_home
+    else
+     echo "The directory can not be found,This installation will be exit."
+     exit 1
+    fi
+  fi
   system_init
   java_install
   mysql_install
   tomcat_install
-  
+  echo -n "The mano package directory is [default:/home/vcpe/MANO]:"
+  read mano_home
+  if [ -z $mano_home ];then
+    if [ -d $MANO_HOME ]; then
+      echo "Installation begin..."
+    else
+      echo "The directory can not be found,This installation will be exit."
+      exit 1
+    fi
+  else
+    if [ -d $MANO_HOME ];then
+      MANO_HOME=$mano_home
+    else
+     echo "The directory can not be found,This installation will be exit."
+     exit 1
+    fi
+  fi
+  while :
+  do
+    i=1
+    MANO_VERSION=()
+    echo "Mano version list:"
+    for MANO_PACKAGE in $(ls $MANO_HOME )
+    do
+        echo "[$i] : $MANO_PACKAGE"
+        SMS_VERSION[$i]=$MANO_PACKAGE
+        i=`expr $i + 1`
+    done
+    echo -n "Pls choose mano version:"
+    read version
+    if [ -z $version ] || [ $version -ge $i ] ;then
+      echo "Pls input the correct version number!"
+      continue
+     else
+       SMS_PACKAGE=${MANO_VERSION[$version]}
+       echo $MANO_PACKAGE
+
+       echo "database import..."
+       rm -rf $MANO_HOME/$MANO_PACKAGE/sms-db.sql
+       cd $MANO_HOME/$MANO_PACKAGE ;ls db* > $MANO_HOME/$MANO_PACKAGE/sms-db.sql
+       sed -i s/db_/source\ db_/g $MANO_HOME/$MANO_PACKAGE/sms-db.sql
+       #cat $SMS_HOME/sms-db.sql
+       cd $MANO_HOME/$MANO_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
+       echo "Mano-web depolyment..."
+       mkdir /usr/local/apache-tomcat8/backup
+       cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
+       cp $MANO_HOME/$MANO_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
+       systemctl start tomcat.service
+       echo "Done."
+       break
+    fi
+  done
 }
 #flexinc depolyment
 function flexinc_install {
@@ -408,3 +478,21 @@ function flexinc_install {
 }
 
 touch install-$CURRENT_TIME.log
+
+while true ; do
+  read -p "Which software do you want to depoly:[MANO:m or SMS:s or FlexINC:f or QUIT:q]" OK
+  case ${OK} in
+      m)
+      mano_install ;;
+      s)
+      sms_install ;;
+      f)
+      flexinc_install ;;
+      q)
+      break ;;
+      *)
+      echo "Pls enter "m" for MANO,"s" for SMS,"f" for FlexINC,"q" for QUIT."
+      continue
+      ;;
+  esac
+done
