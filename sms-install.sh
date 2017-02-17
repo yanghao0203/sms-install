@@ -13,7 +13,8 @@ VCPE_HOME=/home/vcpe
 SMS_HOME=$VCPE_HOME/SMS
 ONOS_HOME=$VCPE_HOME/ONOS
 JAVA_VERSION=java-1.8.0-openjdk
-password=123456
+old_password=`sed -n '/password/h;${x;p}' .mysql_secret | awk  '{print $18}'`
+new_password=
 isCluster=n
 prifix=`ip r sh | grep default | awk '{print $3}' | awk -F. '{print $1"."$2"."$3}'`
 VCPE_IP=`ifconfig | grep $prifix | awk '{print $2}'`
@@ -79,7 +80,7 @@ else
 fi
 #Initialization
 #echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-yum install -y  vim autoconf net-tools unzip > /dev/null
+yum install -y  vim autoconf net-tools unzip  expect > /dev/null
 
 #java install
 echo "Installing java package....[default:$JAVA_VERSION]"
@@ -135,23 +136,32 @@ if [ -f /etc/my.cnf ] ; then
   echo "MySQL initialization is already done."
 else
   cp  /usr/share/mysql/my-default.cnf  /etc/my.cnf
-  /bin/mysql_install_db > /dev/null
-  echo "skip-grant-tables" >> /etc/my.cnf
+#  echo "skip-grant-tables" >> /etc/my.cnf
   service mysql restart
   echo -n "Pls input the password of root:[default:123456]"
   read passwd
   if [ -z $passwd ] ;then
-     password=123456
+     new_password=123456
    else
-    password=$passwd
+     new_password=$passwd
   fi
-  mysql -uroot -e"update mysql.user set mysql.user.password=password('$password') where mysql.user.user='root';"
-  sed -i s/skip-grant-tables/\#skip-grant-tables/g /etc/my.cnf
-  service mysql restart
-  echo "****************************************************************************************************************"
-  echo "Now we will get into mysql terminal,please input "SET PASSWORD=PASSWORD('you new password here');" and then quit. "
-  echo "****************************************************************************************************************"
-  sleep 5
+  /usr/bin/expect <<EOF
+set time 2
+spawn mysql -uroot -p$old_password
+expect {
+"mysql>" {send "SET PASSWORD=PASSWORD('$new_password');\r";}
+}
+expect "*#"                                                        }                                                                                                              expect "*#"
+send "quit;"
+EOF
+#  mysql -uroot -e"update mysql.user set mysql.user.password=password('$password') where mysql.user.user='root';"
+#  sed -i s/skip-grant-tables/\#skip-grant-tables/g /etc/my.cnf
+#  service mysql restart
+#  echo "****************************************************************************************************************"
+#  echo "Now we will get into mysql terminal,please input 'SET PASSWORD=PASSWORD('you new password here');' and then quit."
+#  echo "****************************************************************************************************************"
+#  sleep 5
+#  mysql -uroot -p$password
   #mysql -uroot -p$password -e"SET PASSWORD = PASSWORD('$password');"
 #  mysql -uroot -p$password  <<EOF 2>/dev/null
 #    SET PASSWORD = PASSWORD('$password');
@@ -244,7 +254,7 @@ do
      cd $SMS_HOME/$SMS_PACKAGE ;ls db_vcpe_manage* > $SMS_HOME/$SMS_PACKAGE/sms-db.sql
      sed -i s/db_vcpe/source\ db_vcpe/g $SMS_HOME/$SMS_PACKAGE/sms-db.sql
      #cat $SMS_HOME/sms-db.sql
-     cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$password -e"source sms-db.sql;"
+     cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
      echo "vcpe-manage-web depolyment..."
      mkdir /usr/local/apache-tomcat8/backup
      cp /usr/local/apache-tomcat8/webapps/vcpe* /usr/local/apache-tomcat8/backup/
@@ -290,7 +300,6 @@ while 1 ; do
         ip_array[0]=`echo $ips | awk -F',' '{print  $1}'`
         ip_array[1]=`echo $ips | awk -F',' '{print  $2}'`
         ip_array[2]=`echo $ips | awk -F',' '{print  $3}'`
-        done
       fi
       for ((a=0;<3;a++)) ;do
         judge_ip "${ip_array[$a]}"
@@ -363,6 +372,7 @@ do
      break
   fi
 done
+
 source /etc/profile
 
 cd /opt ; ./flexinc-run restart
