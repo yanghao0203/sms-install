@@ -9,6 +9,7 @@
 #  echo "password=123456" >> install.config
 #  source install.config
 #fi
+CURRENT_TIME=`date +20%y%m%d_%H%M%S`
 VCPE_HOME=/home/vcpe
 SMS_HOME=$VCPE_HOME/SMS
 ONOS_HOME=$VCPE_HOME/ONOS
@@ -60,6 +61,7 @@ function judge_ip(){
         fi
 }
 
+touch install-$CURRENT_TIME.log
 
 echo -n "The VCPE package directory is [default:/home/vcpe]:"
 read vcpe_home
@@ -80,11 +82,11 @@ else
 fi
 #Initialization
 #echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-yum install -y  vim autoconf net-tools unzip  expect > /dev/null
+yum install -y  vim autoconf net-tools unzip  expect  >> install-$CURRENT_TIME.log 2>&1
 
 #java install
 echo "Installing java package....[default:$JAVA_VERSION]"
-yum install -y $JAVA_VERSION > /dev/null
+yum install -y $JAVA_VERSION 2>& 1 >> install-$CURRENT_TIME.log
 echo "Done."
 
 #Mysql installation
@@ -117,10 +119,11 @@ fi
             continue
            else
              MYSQL_VERSION=${MYSQL_PACKAGE[$version]}
-             echo $MYSQL_VERSION
+#             echo $MYSQL_VERSION
              tar -xf $MYSQL_VERSION -C $VCPE_HOME
-             rpm -ivh $VCPE_HOME/MySQL-client-*.rpm
-             rpm -ivh $VCPE_HOME/MySQL-server-*.rpm
+             echo "mysql-server and mysql-client is installing..."
+             rpm -ivh $VCPE_HOME/MySQL-client-*.rpm  >> install-$CURRENT_TIME.log 2>&1
+             rpm -ivh $VCPE_HOME/MySQL-server-*.rpm  >> install-$CURRENT_TIME.log 2>&1
              rm -rf $VCPE_HOME/MySQL-*.rpm
              echo "Done."
              break
@@ -145,13 +148,13 @@ else
    else
      new_password=$passwd
   fi
-  /usr/bin/expect <<EOF
-set time 2
+  /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
+set time 1
 spawn mysql -uroot -p$old_password
 expect {
 "mysql>" {send "SET PASSWORD=PASSWORD('$new_password');\r";}
 }
-expect "*#"                                                        }                                                                                                              expect "*#"
+expect "*#"                                                                                                                                                              expect "*#"
 send "quit;"
 EOF
 #  mysql -uroot -e"update mysql.user set mysql.user.password=password('$password') where mysql.user.user='root';"
