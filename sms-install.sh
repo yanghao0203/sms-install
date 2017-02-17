@@ -14,15 +14,15 @@ VCPE_HOME=/home/vcpe
 SMS_HOME=$VCPE_HOME/SMS
 ONOS_HOME=$VCPE_HOME/ONOS
 JAVA_VERSION=java-1.8.0-openjdk
-old_password=`sed -n '/password/h;${x;p}' .mysql_secret | awk  '{print $18}'`
-new_password=
+old_password=
+new_password=123456
 isCluster=n
 prifix=`ip r sh | grep default | awk '{print $3}' | awk -F. '{print $1"."$2"."$3}'`
-VCPE_IP=`ifconfig | grep $prifix | awk '{print $2}'`
-FLEXINC_IP=`ifconfig | grep $prifix | awk '{print $2}'`
-FLEXINC_IP1=`ifconfig | grep $prifix | awk '{print $2}'`
-FLEXINC_IP2=`ifconfig | grep $prifix | awk '{print $2}'| awk -F. '{print $1"."$2"."$3"."($4+1)}'`
-FLEXINC_IP3=`ifconfig | grep $prifix | awk '{print $2}'| awk -F. '{print $1"."$2"."$3"."($4+2)}'`
+VCPE_IP=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'`
+FLEXINC_IP=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'`
+FLEXINC_IP1=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'`
+FLEXINC_IP2=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'| awk -F. '{print $1"."$2"."$3"."($4+1)}'`
+FLEXINC_IP3=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'| awk -F. '{print $1"."$2"."$3"."($4+2)}'`
 
 function judge_ip(){
 
@@ -81,7 +81,12 @@ else
   fi
 fi
 #Initialization
-#echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+echo "System initialization....."
+echo "nameserver 114.114.114.114" >> /etc/resolv.conf
+echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+iptables -F
+setenforce 0
+sed -i s/^SELINUX=.*/SELINUX=disable/g /etc/sysconfig/selinux
 yum install -y  vim autoconf net-tools unzip  expect  >> install-$CURRENT_TIME.log 2>&1
 
 #java install
@@ -135,11 +140,12 @@ fi
    fi
 
 echo "MySQL Initialization..."
+old_password=`sed -n '/password/h;${x;p}' .mysql_secret | awk  '{print $18}'`
 if [ -f /etc/my.cnf ] ; then
   echo "MySQL initialization is already done."
 else
   cp  /usr/share/mysql/my-default.cnf  /etc/my.cnf
-#  echo "skip-grant-tables" >> /etc/my.cnf
+  echo "#skip-grant-tables" >> /etc/my.cnf
   service mysql restart
   echo -n "Pls input the password of root:[default:123456]"
   read passwd
@@ -157,18 +163,16 @@ expect {
 expect "*#"                                                                                                                                                              expect "*#"
 send "quit;"
 EOF
-#  mysql -uroot -e"update mysql.user set mysql.user.password=password('$password') where mysql.user.user='root';"
-#  sed -i s/skip-grant-tables/\#skip-grant-tables/g /etc/my.cnf
-#  service mysql restart
-#  echo "****************************************************************************************************************"
-#  echo "Now we will get into mysql terminal,please input 'SET PASSWORD=PASSWORD('you new password here');' and then quit."
-#  echo "****************************************************************************************************************"
-#  sleep 5
-#  mysql -uroot -p$password
-  #mysql -uroot -p$password -e"SET PASSWORD = PASSWORD('$password');"
-#  mysql -uroot -p$password  <<EOF 2>/dev/null
-#    SET PASSWORD = PASSWORD('$password');
-#EOF
+
+mysql -uroot -p$newpassword >> install-$CURRENT_TIME.log 2>&1 <<EOF
+use mysql;
+update user set password=password('$newpassword') where user='root';
+update user set host='%' where host='localhost';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;
+flush privileges;
+quit;
+EOF
+
   echo "Done."
 fi
 
@@ -190,12 +194,11 @@ else
   touch /usr/lib/systemd/system/tomcat.service
   cat >>/usr/lib/systemd/system/tomcat.service<<EOF
 [Unit]
-Description=Tomcat7
+Description=Tomcat8
 After=syslog.target network.target remote-fs.target nss-lookup.target
 
 [Service]
 Type=forking
-#Environment='JAVA_HOME=/usr/local/jdk1.7.0_75/'
 Environment='CATALINA_PID=/usr/local/apache-tomcat8/bin/tomcat.pid'
 Environment='CATALINA_HOME=/usr/local/apache-tomcat8/'
 Environment='CATALINA_BASE=/usr/local/apache-tomcat8/'
@@ -254,14 +257,15 @@ do
      echo $SMS_PACKAGE
 
      echo "database import..."
-     cd $SMS_HOME/$SMS_PACKAGE ;ls db_vcpe_manage* > $SMS_HOME/$SMS_PACKAGE/sms-db.sql
-     sed -i s/db_vcpe/source\ db_vcpe/g $SMS_HOME/$SMS_PACKAGE/sms-db.sql
+     rm -rf $SMS_HOME/$SMS_PACKAGE/sms-db.sql
+     cd $SMS_HOME/$SMS_PACKAGE ;ls db* > $SMS_HOME/$SMS_PACKAGE/sms-db.sql
+     sed -i s/db_/source\ db_/g $SMS_HOME/$SMS_PACKAGE/sms-db.sql
      #cat $SMS_HOME/sms-db.sql
      cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
      echo "vcpe-manage-web depolyment..."
      mkdir /usr/local/apache-tomcat8/backup
-     cp /usr/local/apache-tomcat8/webapps/vcpe* /usr/local/apache-tomcat8/backup/
-     cp $SMS_HOME/$SMS_PACKAGE/vcpe-*.war /usr/local/apache-tomcat8/webapps
+     cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
+     cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
      systemctl start tomcat.service
      echo "Done."
      break
@@ -290,7 +294,7 @@ fi
 
 echo -n "the cluster scene:n/y[default:n]"
 read scene
-while 1 ; do
+while true ; do
   if [ x"$scene" = x"y" ] ;then
     sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
     while true ; do
