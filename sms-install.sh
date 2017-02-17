@@ -225,7 +225,7 @@ do
   i=1
   SMS_VERSION=()
   echo "SMS version list:"
-  for SMS_PACKAGE in $(ls $SMS_HOME)
+  for SMS_PACKAGE in $(ls $SMS_HOME )
   do
       echo "[$i] : $SMS_PACKAGE"
       SMS_VERSION[$i]=$SMS_PACKAGE
@@ -336,8 +336,33 @@ sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/vcpe-manage-web\/
 
 chmod a+x $ONOS_HOME/flexinc-run
 cp $ONOS_HOME/* /opt
-cd /opt ; ./flexinc-run install FlexINC_*.tar.gz
 
+#cd /opt ; ./flexinc-run install FlexINC_*.tar.gz
+while :
+do
+  i=1
+  ONOS_VERSION=()
+  echo "onos version list:"
+  for ONOS_PACKAGE in $( ls /opt |grep FlexINC-.*.tar.gz)
+  do
+      echo "[$i] : $ONOS_PACKAGE"
+      ONOS_VERSION[$i]=$ONOS_PACKAGE
+      i=`expr $i + 1`
+  done
+  echo -n "Pls choose sms version:"
+  read version
+  if [ -z $version ] || [ $version -ge $i ] ;then
+    echo "Pls input the correct version number!"
+    continue
+   else
+     ONOS_PACKAGE=${ONOS_VERSION[$version]}
+     echo $ONOS_PACKAGE
+     echo "vcpe-manage-web depolyment..."
+     cd /opt ; ./flexinc-run install $ONOS_PACKAGE
+     echo "Done."
+     break
+  fi
+done
 source /etc/profile
 
-cd /opt ; ./flexinc-run start
+cd /opt ; ./flexinc-run restart
