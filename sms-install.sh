@@ -14,7 +14,7 @@ VCPE_HOME=/home/vcpe
 SMS_HOME=$VCPE_HOME/SMS
 ONOS_HOME=$VCPE_HOME/ONOS
 MANO_HOME=$VCPE_HOME/MANO
-JAVA_VERSION=java-1.8.0-openjdk
+JAVA_VERSION=
 old_password=
 new_password=123456
 isCluster=n
@@ -71,13 +71,61 @@ function  system_init {
         iptables -F
         setenforce 0
         sed -i s/^SELINUX=.*/SELINUX=disable/g /etc/sysconfig/selinux
-        yum install -y  vim autoconf net-tools unzip  expect  >> install-$CURRENT_TIME.log 2>&1
+        yum install -y  vim autoconf net-tools unzip ntp expect  >> install-$CURRENT_TIME.log 2>&1
 }
+
 #java install
-function java_install {
-        echo "Installing java package....[default:$JAVA_VERSION]"
-        yum install -y $JAVA_VERSION 2>& 1 >> install-$CURRENT_TIME.log
-        echo "Done."
+function java8_install {
+        echo "Installing java package...."
+        java_version=`java -version 2>&1 |awk 'NR==1{ gsub(/"/,""); print $3 }'`
+
+        if [ "$java_version"x = "1.8.0_77"x ]; then
+           echo "java_version "$java_version
+        else
+           sed -i '/JAVA_HOME/d' /etc/profile
+           sed -i '/JRE_HOME/d' /etc/profile
+           sed -i '/CLASSPATH/d' /etc/profile
+           sed -i '/export PATH/d' /etc/profile
+           [ ! -d "/usr/lib/jvm" ] && mkdir /usr/lib/jvm
+           cp $VCPE_HOME/jdk1.8.0_77.tar.gz /usr/lib/jvm
+           cd /usr/lib/jvm
+           rm -rf jdk1.8.0_77
+           rm -rf java-8-openjdk-amd64
+           mkdir jdk1.8.0_77
+           tar zxf jdk1.8.0_77.tar.gz
+           ln -s  jdk1.8.0_77 java-8-openjdk-amd64
+           echo 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64' >> /etc/profile
+           echo 'export JRE_HOME=$JAVA_HOME/jre' >> /etc/profile
+           echo 'export CLASSPATH=.:$CLASSPATH:$JAVA_HOME/lib:$JRE_HOME/lib' >> /etc/profile
+           echo 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' >> /etc/profile
+           source /etc/profile
+           echo "Done."
+        fi
+
+}
+
+function java7_install {
+        echo "Installing java package...."
+        java_version=`java -version 2>&1 |awk 'NR==1{ gsub(/"/,""); print $3 }'`
+
+        if [ "$java_version"x = "1.7.0_75"x ]; then
+           echo "java_version "$java_version
+        else
+           sed -i '/JAVA_HOME/d' /etc/profile
+           sed -i '/JRE_HOME/d' /etc/profile
+           sed -i '/CLASSPATH/d' /etc/profile
+           sed -i '/export PATH/d' /etc/profile
+           [ ! -d "/usr/lib/jvm" ] && mkdir /usr/lib/jvm
+           cp $VCPE_HOME/jdk-7u75-linux-x64.tar.gz /usr/local
+           cd /usr/local
+           rm -rf jdk1.7.0_75
+           tar zxf jdk-7u75-linux-x64.tar.gz
+           echo 'export JAVA_HOME=/usr/local/jdk1.7.0_75' >> /etc/profile
+           echo 'export CLASSPATH==.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar' >> /etc/profile
+           echo 'export PATH==$PATH:$JAVA_HOME/bin' >> /etc/profile
+           source /etc/profile
+           echo "Done."
+        fi
 }
 
 #Mysql installation
@@ -116,6 +164,7 @@ function mysql_install {
                      echo "mysql-server and mysql-client is installing..."
                      rpm -ivh $VCPE_HOME/MySQL-client-*.rpm  >> install-$CURRENT_TIME.log 2>&1
                      rpm -ivh $VCPE_HOME/MySQL-server-*.rpm  >> install-$CURRENT_TIME.log 2>&1
+                     rpm -ivh $VCPE_HOME/MySQL-devel-*.rpm  >> install-$CURRENT_TIME.log 2>&1
                      rm -rf $VCPE_HOME/MySQL-*.rpm
                      echo "Done."
                      break
@@ -127,13 +176,13 @@ function mysql_install {
            fi
 
         echo "MySQL Initialization..."
-        old_password=`sed -n '/password/h;${x;p}' .mysql_secret | awk  '{print $18}'`
+        old_password=`sed -n '/password/h;${x;p}' /root/.mysql_secret | awk  '{print $18}'`
         if [ -f /etc/my.cnf ] ; then
           echo "MySQL initialization is already done."
         else
           cp  /usr/share/mysql/my-default.cnf  /etc/my.cnf
           echo "#skip-grant-tables" >> /etc/my.cnf
-          service mysql restart
+          service mysql start
           echo -n "Pls input the password of root:[default:123456]"
           read passwd
           if [ -z $passwd ] ;then
@@ -141,6 +190,7 @@ function mysql_install {
            else
              new_password=$passwd
           fi
+
           /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
 set time 1
 spawn mysql -uroot -p$old_password
@@ -151,11 +201,9 @@ expect "*#"                                                                     
 send "quit"
 EOF
 
-          mysql -uroot -p$newpassword >> install-$CURRENT_TIME.log 2>&1 <<EOF
+          mysql -uroot -p$new_password <<EOF
 use mysql;
-update user set password=password('$newpassword') where user='root';
-update user set host='%' where host='localhost';
-GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;
+update user set password=password('$new_password') where user='root';
 flush privileges;
 quit
 EOF
@@ -164,8 +212,8 @@ EOF
         fi
 }
 #Apache tomcat8 installation
-function tomcat_install {
-      echo "Installing Tomcat Apache package....[default:apache-tomcat8.tar.gz]"
+function tomcat8_install {
+      echo "Installing Tomcat Apache package...."
       if [ -d /usr/local/apache-tomcat8 ] ;then
         echo "Apache Tomcat is already installed."
       elif [ -f $VCPE_HOME/apache-tomcat8.tar.gz ] ; then
@@ -206,6 +254,50 @@ EOF
       fi
 }
 
+function tomcat7_install {
+      echo "Installing Tomcat Apache package...."
+      if [ -d /usr/local/apache-tomcat-7.0.65 ] ;then
+        echo "Apache Tomcat is already installed."
+      elif [ -f $VCPE_HOME/apache-tomcat-7.0.65.tar.gz ] ; then
+        tar -zxf $VCPE_HOME/apache-tomcat-7.0.65.tar.gz -C /usr/local
+        sed -i '/^PRGDIR/a\\CATALINA_OPTS="$CATALINA_OPTS -server -Xmx2048m -XX:MaxPermSize=512m "' $VCPE_HOME/apache-tomcat-7.0.65/bin/catalina.sh
+        echo "Done."
+      else
+        echo "Tomcat package can not be found，This installation will be exit."
+        exit 1
+      fi
+      #auto boot config
+      if [ -f /usr/lib/systemd/system/tomcat.service ] ;then
+        echo "Apache tomcat auto-starting  is already configed. "
+      else
+        touch /usr/lib/systemd/system/tomcat.service
+        cat >>/usr/lib/systemd/system/tomcat.service<<EOF
+[Unit]
+Description=Tomcat7
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+Environment='JAVA_HOME=/usr/local/jdk1.7.0_75/'
+Environment='CATALINA_PID=/usr/local/apache-tomcat-7.0.65/bin/tomcat.pid'
+Environment='CATALINA_HOME=/usr/local/apache-tomcat-7.0.65/'
+Environment='CATALINA_BASE=/usr/local/apache-tomcat-7.0.65/'
+
+
+WorkingDirectory=/usr/local/apache-tomcat-7.0.65/
+
+ExecStart=/usr/local/apache-tomcat-7.0.65/bin/startup.sh
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+      systemctl enable tomcat.service
+      fi
+}
+
 #sms depoly
 function sms_install {
 
@@ -228,9 +320,9 @@ function sms_install {
           fi
         fi
         system_init
-        java_install
+        java8_install
         mysql_install
-        tomcat_install
+        tomcat8_install
         echo -n "The sms package directory is [default:/home/vcpe/SMS]:"
         read sms_home
         if [ -z $sms_home ];then
@@ -306,9 +398,9 @@ function mano_install {
     fi
   fi
   system_init
-  java_install
+  java7_install
   mysql_install
-  tomcat_install
+  tomcat7_install
   echo -n "The mano package directory is [default:/home/vcpe/MANO]:"
   read mano_home
   if [ -z $mano_home ];then
@@ -353,15 +445,15 @@ function mano_install {
        #cat $SMS_HOME/sms-db.sql
        cd $MANO_HOME/$MANO_PACKAGE/sql ; mysql -uroot -p$new_password -e"source sms-db.sql;"
        echo "Mano-web depolyment..."
-       mkdir /usr/local/apache-tomcat8/backup
-       cp /usr/local/apache-tomcat8/webapps/*.war* /usr/local/apache-tomcat8/backup/
-       cp $MANO_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat8/webapps
+       mkdir /usr/local/apache-tomcat-7.0.65/backup
+       cp /usr/local/apache-tomcat-7.0.65/webapps/*.war* /usr/local/apache-tomcat-7.0.65/backup/
+       cp $MANO_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat-7.0.65/webapps
        echo -n "Use windriver or openstack?[default:windriver]:"
        read type
-       if [ -z type ] || [ x$type = x"windriver" ] ; then
-           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-1512 /usr/local/apache-tomcat8/webapps
+       if [ -z $type ] || [ x$type = x"windriver" ] ; then
+           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-1512 /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
        else
-           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat8/webapps
+           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
        fi
        systemctl start tomcat.service
        echo "Done."
@@ -478,8 +570,6 @@ function flexinc_install {
              break
           fi
         done
-
-        source /etc/profile
 
         cd /opt ; ./flexinc-run restart
 }
