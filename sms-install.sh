@@ -9,14 +9,14 @@
 #  echo "password=123456" >> install.config
 #  source install.config
 #fi
-CURRENT_TIME=`date +20%y%m%d_%H%M%S`
+CURRENT_TIME=`date +20%y.%m.%d_%H:%M:%S`
 VCPE_HOME=/home/vcpe
 SMS_HOME=$VCPE_HOME/SMS
 ONOS_HOME=$VCPE_HOME/ONOS
 MANO_HOME=$VCPE_HOME/MANO
 JAVA_VERSION=
 old_password=
-new_password=123456
+new_password=
 isCluster=n
 prifix=`ip r sh | grep default | awk '{print $3}' | awk -F. '{print $1"."$2"."$3}'`
 LOCALIP=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'`
@@ -540,7 +540,7 @@ function flexinc_install {
 
         #STB_WEB_URL
         sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/vcpe-manage-web\/gw\"/g" $ONOS_HOME/flexinc-run
-
+        #sed -i "/STB_WEB_URL/s/[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*/$VCPE_IP/;s/vcpe/gw/" $ONOS_HOME/flexinc-run
         chmod a+x $ONOS_HOME/flexinc-run
         cp $ONOS_HOME/* /opt
 
