@@ -148,7 +148,7 @@ expect {
 "mysql>" {send "SET PASSWORD=PASSWORD('$new_password');\r";}
 }
 expect "*#"                                                                                                                                                              expect "*#"
-send "quit;"
+send "quit"
 EOF
 
           mysql -uroot -p$newpassword >> install-$CURRENT_TIME.log 2>&1 <<EOF
@@ -157,7 +157,7 @@ update user set password=password('$newpassword') where user='root';
 update user set host='%' where host='localhost';
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;
 flush privileges;
-quit;
+quit
 EOF
           chkconfig mysql on
           echo "Done."
@@ -326,7 +326,7 @@ function mano_install {
      exit 1
     fi
   fi
-  while :
+  while true :
   do
     i=1
     MANO_VERSION=()
@@ -347,15 +347,22 @@ function mano_install {
        echo $MANO_PACKAGE
 
        echo "database import..."
-       rm -rf $MANO_HOME/$MANO_PACKAGE/sms-db.sql
-       cd $MANO_HOME/$MANO_PACKAGE ;ls db* > $MANO_HOME/$MANO_PACKAGE/sms-db.sql
-       sed -i s/db_/source\ db_/g $MANO_HOME/$MANO_PACKAGE/sms-db.sql
+       rm -rf $MANO_HOME/$MANO_PACKAGE/sql/sms-db.sql
+       cd $MANO_HOME/$MANO_PACKAGE/sql ;ls db* > $MANO_HOME/$MANO_PACKAGE/sql/sms-db.sql
+       sed -i s/db/source\ db/g $MANO_HOME/$MANO_PACKAGE/sql/sms-db.sql
        #cat $SMS_HOME/sms-db.sql
-       cd $MANO_HOME/$MANO_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
+       cd $MANO_HOME/$MANO_PACKAGE/sql ; mysql -uroot -p$new_password -e"source sms-db.sql;"
        echo "Mano-web depolyment..."
        mkdir /usr/local/apache-tomcat8/backup
-       cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
-       cp $MANO_HOME/$MANO_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
+       cp /usr/local/apache-tomcat8/webapps/*.war* /usr/local/apache-tomcat8/backup/
+       cp $MANO_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat8/webapps
+       echo -n "Use windriver or openstack?[default:windriver]:"
+       read type
+       if [ -z type ] || [ x$type = x"windriver" ] ; then
+           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-1512 /usr/local/apache-tomcat8/webapps
+       else
+           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat8/webapps
+       fi
        systemctl start tomcat.service
        echo "Done."
        break
