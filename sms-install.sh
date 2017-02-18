@@ -75,9 +75,31 @@ function  system_init {
 }
 #java install
 function java_install {
-        echo "Installing java package....[default:$JAVA_VERSION]"
-        yum install -y $JAVA_VERSION 2>& 1 >> install-$CURRENT_TIME.log
-        echo "Done."
+        echo "Installing java package...."
+        java_version=`java -version 2>&1 |awk 'NR==1{ gsub(/"/,""); print $3 }'`
+
+        if [ "$java_version"x = "1.8.0_77"x ]; then
+           echo "java_version "$java_version
+        else
+           sed -i '/JAVA_HOME/d' /etc/profile
+           sed -i '/JRE_HOME/d' /etc/profile
+           sed -i '/CLASSPATH/d' /etc/profile
+           sed -i '/export PATH/d' /etc/profile
+           [ ! -d "/usr/lib/jvm" ] && mkdir /usr/lib/jvm
+           cd /usr/lib/jvm
+           cp $VCPE_HOME/jdk1.8.0_77.tar.gz /usr/lib/jvm
+           rm -rf jdk1.8.0_77
+           rm -rf java-8-openjdk-amd64
+           mkdir jdk1.8.0_77
+           tar zxf jdk1.8.0_77.tar.gz
+           ln -s  jdk1.8.0_77 java-8-openjdk-amd64
+           echo 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64' >> /etc/profile
+           echo 'export JRE_HOME=$JAVA_HOME/jre' >> /etc/profile
+           echo 'export CLASSPATH=.:$CLASSPATH:$JAVA_HOME/lib:$JRE_HOME/lib' >> /etc/profile
+           echo 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' >> /etc/profile
+           source /etc/profile
+        fi
+#        echo "Done."
 }
 
 #Mysql installation
@@ -478,8 +500,6 @@ function flexinc_install {
              break
           fi
         done
-
-        source /etc/profile
 
         cd /opt ; ./flexinc-run restart
 }
