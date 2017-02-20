@@ -98,7 +98,7 @@ function java8_install {
            echo 'export JRE_HOME=$JAVA_HOME/jre' >> /etc/profile
            echo 'export CLASSPATH=.:$CLASSPATH:$JAVA_HOME/lib:$JRE_HOME/lib' >> /etc/profile
            echo 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' >> /etc/profile
-           source /etc/profile
+           sh /etc/profile
            echo "Done."
         fi
 
@@ -123,7 +123,7 @@ function java7_install {
            echo 'export JAVA_HOME=/usr/local/jdk1.7.0_75' >> /etc/profile
            echo 'export CLASSPATH==.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar' >> /etc/profile
            echo 'export PATH==$PATH:$JAVA_HOME/bin' >> /etc/profile
-           source /etc/profile
+           sh /etc/profile
            echo "Done."
         fi
 }
@@ -308,14 +308,14 @@ function sms_install {
           if [ -d $VCPE_HOME ]; then
             echo "Installation begin..."
           else
-            echo "The directory can not be found,This installation will be exit."
+            echo "The directory $VCPE_HOME can not be found,This installation will be exit."
             exit 1
           fi
         else
           if [ -d $vcpe_home ];then
             VCPE_HOME=$vcpe_home
           else
-           echo "The directory can not be found,This installation will be exit."
+           echo "The directory $VCPE_HOME can not be found,This installation will be exit."
            exit 1
           fi
         fi
@@ -329,14 +329,14 @@ function sms_install {
           if [ -d $SMS_HOME ]; then
             echo "Installation begin..."
           else
-            echo "The directory can not be found,This installation will be exit."
+            echo "The directory $SMS_HOME can not be found,This installation will be exit."
             exit 1
           fi
         else
           if [ -d $SMS_HOME ];then
             SMS_HOME=$sms_home
           else
-           echo "The directory can not be found,This installation will be exit."
+           echo "The directory  $SMS_HOME can not be found,This installation will be exit."
            exit 1
           fi
         fi
@@ -386,14 +386,14 @@ function mano_install {
     if [ -d $VCPE_HOME ]; then
       echo "Installation begin..."
     else
-      echo "The directory can not be found,This installation will be exit."
+      echo "The directory $VCPE_HOME can not be found,This installation will be exit."
       exit 1
     fi
   else
     if [ -d $vcpe_home ];then
       VCPE_HOME=$vcpe_home
     else
-     echo "The directory can not be found,This installation will be exit."
+     echo "The directory $VCPE_HOME can not be found,This installation will be exit."
      exit 1
     fi
   fi
@@ -464,21 +464,21 @@ function mano_install {
 #flexinc depolyment
 function flexinc_install {
         system_init
-        echo "ONOS depolyment..."
-        echo -n "The ONOS package directory is [default:/home/vcpe/ONOS]:"
+        echo "Flexinc depolyment..."
+        echo -n "The flexinc package directory is [default:/home/vcpe/ONOS]:"
         read onos_home
         if [ -z $onos_home ];then
           if [ -d $ONOS_HOME ]; then
             echo "Installation begin..."
           else
-            echo "The directory can not be found,This installation will be exit."
+            echo "The directory $ONOS_HOME can not be found,This installation will be exit."
             exit 1
           fi
         else
           if [ -d $onos_home ];then
             ONOS_HOME=$onos_home
           else
-           echo "The directory can not be found,This installation will be exit."
+           echo "The directory  $ONOS_HOME can not be found,This installation will be exit."
            exit 1
           fi
         fi
@@ -549,14 +549,14 @@ function flexinc_install {
         do
           i=1
           ONOS_VERSION=()
-          echo "onos version list:"
+          echo "flexinc version list:"
           for ONOS_PACKAGE in $( ls /opt |grep FlexINC-.*.tar.gz)
           do
               echo "[$i] : $ONOS_PACKAGE"
               ONOS_VERSION[$i]=$ONOS_PACKAGE
               i=`expr $i + 1`
           done
-          echo -n "Pls choose sms version:"
+          echo -n "Pls choose flexinc version:"
           read version
           if [ -z $version ] || [ $version -ge $i ] ;then
             echo "Pls input the correct version number!"
@@ -564,20 +564,18 @@ function flexinc_install {
            else
              ONOS_PACKAGE=${ONOS_VERSION[$version]}
              echo $ONOS_PACKAGE
-             echo "vcpe-manage-web depolyment..."
              cd /opt ; ./flexinc-run install $ONOS_PACKAGE
              echo "Done."
              break
           fi
         done
-
-        cd /opt ; ./flexinc-run restart
+        cd /opt ; ./flexinc-run start
 }
 
 touch install-$CURRENT_TIME.log
 
 while true ; do
-  read -p "Which software do you want to depoly:[MANO:m or SMS:s or FlexINC:f or QUIT:q]" OK
+  read -p "Deploy options:[MANO:m or SMS:s or FlexINC:f or QUIT:q]" OK
   case ${OK} in
       m)
       mano_install ;;
