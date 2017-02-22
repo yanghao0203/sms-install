@@ -204,6 +204,7 @@ EOF
           mysql -uroot -p$new_password <<EOF
 use mysql;
 update user set password=password('$new_password') where user='root';
+GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '$new_password';
 flush privileges;
 quit
 EOF
@@ -235,6 +236,7 @@ After=syslog.target network.target remote-fs.target nss-lookup.target
 
 [Service]
 Type=forking
+Environment='JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64'
 Environment='CATALINA_PID=/usr/local/apache-tomcat8/bin/tomcat.pid'
 Environment='CATALINA_HOME=/usr/local/apache-tomcat8/'
 Environment='CATALINA_BASE=/usr/local/apache-tomcat8/'
@@ -367,7 +369,7 @@ function sms_install {
              #cat $SMS_HOME/sms-db.sql
              cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
              echo "vcpe-manage-web depolyment..."
-             mkdir /usr/local/apache-tomcat8/backup
+             [ ! -d /usr/local/apache-tomcat8/backup ] && mkdir /usr/local/apache-tomcat8/backup
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
              cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
              systemctl start tomcat.service
@@ -445,7 +447,7 @@ function mano_install {
        #cat $SMS_HOME/sms-db.sql
        cd $MANO_HOME/$MANO_PACKAGE/sql ; mysql -uroot -p$new_password -e"source sms-db.sql;"
        echo "Mano-web depolyment..."
-       mkdir /usr/local/apache-tomcat-7.0.65/backup
+       [ ! -d /usr/local/apache-tomcat-7.0.65/backup ] && mkdir /usr/local/apache-tomcat-7.0.65/backup
        cp /usr/local/apache-tomcat-7.0.65/webapps/*.war* /usr/local/apache-tomcat-7.0.65/backup/
        cp $MANO_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat-7.0.65/webapps
        echo -n "Use windriver or openstack?[default:windriver]:"
@@ -514,6 +516,7 @@ function flexinc_install {
             done
 
           elif [ x"$scene" = x"n" ] || [ -z $scene ] ; then
+            scene=n
             sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
             while true ; do
               echo -n "ifconfig network card ip:[default:$FLEXINC_IP]"
@@ -539,7 +542,7 @@ function flexinc_install {
         done
 
         #STB_WEB_URL
-        sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/vcpe-manage-web\/gw\"/g" $ONOS_HOME/flexinc-run
+        sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/gw-manage-web\/gw\"/g" $ONOS_HOME/flexinc-run
         #sed -i "/STB_WEB_URL/s/[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*/$VCPE_IP/;s/vcpe/gw/" $ONOS_HOME/flexinc-run
         chmod a+x $ONOS_HOME/flexinc-run
         cp $ONOS_HOME/* /opt
