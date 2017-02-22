@@ -23,8 +23,12 @@ LOCALIP=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'`
 VCPE_IP=$LOCALIP
 FLEXINC_IP=$LOCALIP
 FLEXINC_IP1=$LOCALIP
-FLEXINC_IP2=`echo $LOCALIP | awk -F. '{print $1"."$2"."$3"."($4+1)}'`
-FLEXINC_IP3=`echo $LOCALIP | awk -F. '{print $1"."$2"."$3"."($4+2)}'`
+FLEXINC_IP2=`echo $FLEXINC_IP1 | awk -F. '{print $1"."$2"."$3"."($4+1)}'`
+FLEXINC_IP3=`echo $FLEXINC_IP1 | awk -F. '{print $1"."$2"."$3"."($4+2)}'`
+FTP_IP=$LOCALIP
+FTP_PORT=21
+FTP_USER=certus
+FTP_PASSWD=certus123
 
 function judge_ip(){
 
@@ -72,6 +76,31 @@ function  system_init {
         setenforce 0
         sed -i s/^SELINUX=.*/SELINUX=disable/g /etc/sysconfig/selinux
         yum install -y  vim autoconf net-tools unzip ntp expect  >> install-$CURRENT_TIME.log 2>&1
+}
+
+function ftp_install {
+        ftp_version=`rpm -qa|grep vsftpd | awk -F- '{print $2}'`
+        if [ -z $ftp_version ];then
+          yum install -y vsftpd
+          sed -i '/^anonymous_enable=YES/a\anonymous_enable=NO' /etc/vsftpd/vsftpd.conf
+          sed -i '/^chroot_local_user=YES/a\chroot_local_user=YES' /etc/vsftpd/vsftpd.conf
+          sed -i '$a\allow_writeable_chroot=YES' /etc/vsftpd/vsftpd.conf
+          service vsftpd restart
+          chkconfig vsftpd on
+
+          useradd -d /var/ftp/$FTP_USER -s /sbin/nologin $FTP_USER
+          /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
+set time 1
+spawn passwd $FTP_USER
+expect  "password:"
+send "$FTP_PASSWD\r"
+expect  "password:"
+send "$FTP_PASSWD\r"
+EOF
+          chown -R $FTP_USER.$FTP_USER /var/ftp/$FTP_USER
+         else
+           echo "FTP server is alreay installed."
+         fi
 }
 
 #java install
