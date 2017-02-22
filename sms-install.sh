@@ -612,7 +612,8 @@ while true ; do
       m)
       mano_install ;;
       s)
-      sms_install ;;
+      sms_install 
+      ftp_install ;;
       f)
       flexinc_install ;;
       q)
