@@ -397,7 +397,7 @@ function sms_install {
              sed -i s/db_/source\ db_/g $SMS_HOME/$SMS_PACKAGE/sms-db.sql
              #cat $SMS_HOME/sms-db.sql
              cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
-             echo "vcpe-manage-web depolyment..."
+             echo "manage-web depolyment..."
              [ ! -d /usr/local/apache-tomcat8/backup ] && mkdir /usr/local/apache-tomcat8/backup
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
              cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
@@ -612,7 +612,7 @@ while true ; do
       m)
       mano_install ;;
       s)
-      sms_install 
+      sms_install
       ftp_install ;;
       f)
       flexinc_install ;;
