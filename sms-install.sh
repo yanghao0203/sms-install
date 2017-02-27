@@ -23,8 +23,12 @@ LOCALIP=`ip add sh | grep $prifix | awk '{print $2}' | awk -F/ '{print $1}'`
 VCPE_IP=$LOCALIP
 FLEXINC_IP=$LOCALIP
 FLEXINC_IP1=$LOCALIP
-FLEXINC_IP2=`echo $LOCALIP | awk -F. '{print $1"."$2"."$3"."($4+1)}'`
-FLEXINC_IP3=`echo $LOCALIP | awk -F. '{print $1"."$2"."$3"."($4+2)}'`
+FLEXINC_IP2=`echo $FLEXINC_IP1 | awk -F. '{print $1"."$2"."$3"."($4+1)}'`
+FLEXINC_IP3=`echo $FLEXINC_IP1 | awk -F. '{print $1"."$2"."$3"."($4+2)}'`
+FTP_IP=$LOCALIP
+FTP_PORT=21
+FTP_USER=certus
+FTP_PASSWD=certus123
 
 function judge_ip(){
 
@@ -74,6 +78,31 @@ function  system_init {
         yum install -y  vim autoconf net-tools unzip ntp expect  >> install-$CURRENT_TIME.log 2>&1
 }
 
+function ftp_install {
+        ftp_version=`rpm -qa|grep vsftpd | awk -F- '{print $2}'`
+        if [ -z $ftp_version ];then
+          yum install -y vsftpd
+          sed -i '/^anonymous_enable=YES/a\anonymous_enable=NO' /etc/vsftpd/vsftpd.conf
+          sed -i '/^chroot_local_user=YES/a\chroot_local_user=YES' /etc/vsftpd/vsftpd.conf
+          sed -i '$a\allow_writeable_chroot=YES' /etc/vsftpd/vsftpd.conf
+          service vsftpd restart
+          chkconfig vsftpd on
+
+          useradd -d /var/ftp/$FTP_USER -s /sbin/nologin $FTP_USER
+          /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
+set time 1
+spawn passwd $FTP_USER
+expect  "password:"
+send "$FTP_PASSWD\r"
+expect  "password:"
+send "$FTP_PASSWD\r"
+EOF
+          chown -R $FTP_USER.$FTP_USER /var/ftp/$FTP_USER
+         else
+           echo "FTP server is alreay installed."
+         fi
+}
+
 #java install
 function java8_install {
         echo "Installing java package...."
@@ -98,7 +127,7 @@ function java8_install {
            echo 'export JRE_HOME=$JAVA_HOME/jre' >> /etc/profile
            echo 'export CLASSPATH=.:$CLASSPATH:$JAVA_HOME/lib:$JRE_HOME/lib' >> /etc/profile
            echo 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' >> /etc/profile
-           source /etc/profile
+           sh /etc/profile
            echo "Done."
         fi
 
@@ -123,7 +152,7 @@ function java7_install {
            echo 'export JAVA_HOME=/usr/local/jdk1.7.0_75' >> /etc/profile
            echo 'export CLASSPATH==.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar' >> /etc/profile
            echo 'export PATH==$PATH:$JAVA_HOME/bin' >> /etc/profile
-           source /etc/profile
+           sh /etc/profile
            echo "Done."
         fi
 }
@@ -204,6 +233,7 @@ EOF
           mysql -uroot -p$new_password <<EOF
 use mysql;
 update user set password=password('$new_password') where user='root';
+GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '$new_password';
 flush privileges;
 quit
 EOF
@@ -235,6 +265,7 @@ After=syslog.target network.target remote-fs.target nss-lookup.target
 
 [Service]
 Type=forking
+Environment='JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64'
 Environment='CATALINA_PID=/usr/local/apache-tomcat8/bin/tomcat.pid'
 Environment='CATALINA_HOME=/usr/local/apache-tomcat8/'
 Environment='CATALINA_BASE=/usr/local/apache-tomcat8/'
@@ -308,14 +339,14 @@ function sms_install {
           if [ -d $VCPE_HOME ]; then
             echo "Installation begin..."
           else
-            echo "The directory can not be found,This installation will be exit."
+            echo "The directory $VCPE_HOME can not be found,This installation will be exit."
             exit 1
           fi
         else
           if [ -d $vcpe_home ];then
             VCPE_HOME=$vcpe_home
           else
-           echo "The directory can not be found,This installation will be exit."
+           echo "The directory $VCPE_HOME can not be found,This installation will be exit."
            exit 1
           fi
         fi
@@ -329,14 +360,14 @@ function sms_install {
           if [ -d $SMS_HOME ]; then
             echo "Installation begin..."
           else
-            echo "The directory can not be found,This installation will be exit."
+            echo "The directory $SMS_HOME can not be found,This installation will be exit."
             exit 1
           fi
         else
           if [ -d $SMS_HOME ];then
             SMS_HOME=$sms_home
           else
-           echo "The directory can not be found,This installation will be exit."
+           echo "The directory  $SMS_HOME can not be found,This installation will be exit."
            exit 1
           fi
         fi
@@ -366,8 +397,8 @@ function sms_install {
              sed -i s/db_/source\ db_/g $SMS_HOME/$SMS_PACKAGE/sms-db.sql
              #cat $SMS_HOME/sms-db.sql
              cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
-             echo "vcpe-manage-web depolyment..."
-             mkdir /usr/local/apache-tomcat8/backup
+             echo "manage-web depolyment..."
+             [ ! -d /usr/local/apache-tomcat8/backup ] && mkdir /usr/local/apache-tomcat8/backup
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
              cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
              systemctl start tomcat.service
@@ -386,14 +417,14 @@ function mano_install {
     if [ -d $VCPE_HOME ]; then
       echo "Installation begin..."
     else
-      echo "The directory can not be found,This installation will be exit."
+      echo "The directory $VCPE_HOME can not be found,This installation will be exit."
       exit 1
     fi
   else
     if [ -d $vcpe_home ];then
       VCPE_HOME=$vcpe_home
     else
-     echo "The directory can not be found,This installation will be exit."
+     echo "The directory $VCPE_HOME can not be found,This installation will be exit."
      exit 1
     fi
   fi
@@ -445,7 +476,7 @@ function mano_install {
        #cat $SMS_HOME/sms-db.sql
        cd $MANO_HOME/$MANO_PACKAGE/sql ; mysql -uroot -p$new_password -e"source sms-db.sql;"
        echo "Mano-web depolyment..."
-       mkdir /usr/local/apache-tomcat-7.0.65/backup
+       [ ! -d /usr/local/apache-tomcat-7.0.65/backup ] && mkdir /usr/local/apache-tomcat-7.0.65/backup
        cp /usr/local/apache-tomcat-7.0.65/webapps/*.war* /usr/local/apache-tomcat-7.0.65/backup/
        cp $MANO_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat-7.0.65/webapps
        echo -n "Use windriver or openstack?[default:windriver]:"
@@ -464,21 +495,21 @@ function mano_install {
 #flexinc depolyment
 function flexinc_install {
         system_init
-        echo "ONOS depolyment..."
-        echo -n "The ONOS package directory is [default:/home/vcpe/ONOS]:"
+        echo "Flexinc depolyment..."
+        echo -n "The flexinc package directory is [default:/home/vcpe/ONOS]:"
         read onos_home
         if [ -z $onos_home ];then
           if [ -d $ONOS_HOME ]; then
             echo "Installation begin..."
           else
-            echo "The directory can not be found,This installation will be exit."
+            echo "The directory $ONOS_HOME can not be found,This installation will be exit."
             exit 1
           fi
         else
           if [ -d $onos_home ];then
             ONOS_HOME=$onos_home
           else
-           echo "The directory can not be found,This installation will be exit."
+           echo "The directory  $ONOS_HOME can not be found,This installation will be exit."
            exit 1
           fi
         fi
@@ -514,6 +545,7 @@ function flexinc_install {
             done
 
           elif [ x"$scene" = x"n" ] || [ -z $scene ] ; then
+            scene=n
             sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
             while true ; do
               echo -n "ifconfig network card ip:[default:$FLEXINC_IP]"
@@ -539,7 +571,7 @@ function flexinc_install {
         done
 
         #STB_WEB_URL
-        sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/vcpe-manage-web\/gw\"/g" $ONOS_HOME/flexinc-run
+        sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/gw-manage-web\/gw\"/g" $ONOS_HOME/flexinc-run
         #sed -i "/STB_WEB_URL/s/[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*/$VCPE_IP/;s/vcpe/gw/" $ONOS_HOME/flexinc-run
         chmod a+x $ONOS_HOME/flexinc-run
         cp $ONOS_HOME/* /opt
@@ -549,14 +581,14 @@ function flexinc_install {
         do
           i=1
           ONOS_VERSION=()
-          echo "onos version list:"
+          echo "flexinc version list:"
           for ONOS_PACKAGE in $( ls /opt |grep FlexINC-.*.tar.gz)
           do
               echo "[$i] : $ONOS_PACKAGE"
               ONOS_VERSION[$i]=$ONOS_PACKAGE
               i=`expr $i + 1`
           done
-          echo -n "Pls choose sms version:"
+          echo -n "Pls choose flexinc version:"
           read version
           if [ -z $version ] || [ $version -ge $i ] ;then
             echo "Pls input the correct version number!"
@@ -564,25 +596,24 @@ function flexinc_install {
            else
              ONOS_PACKAGE=${ONOS_VERSION[$version]}
              echo $ONOS_PACKAGE
-             echo "vcpe-manage-web depolyment..."
              cd /opt ; ./flexinc-run install $ONOS_PACKAGE
              echo "Done."
              break
           fi
         done
-
-        cd /opt ; ./flexinc-run restart
+        cd /opt ; ./flexinc-run start
 }
 
 touch install-$CURRENT_TIME.log
 
 while true ; do
-  read -p "Which software do you want to depoly:[MANO:m or SMS:s or FlexINC:f or QUIT:q]" OK
+  read -p "Deploy options:[MANO:m or SMS:s or FlexINC:f or QUIT:q]" OK
   case ${OK} in
       m)
       mano_install ;;
       s)
-      sms_install ;;
+      sms_install
+      ftp_install ;;
       f)
       flexinc_install ;;
       q)
