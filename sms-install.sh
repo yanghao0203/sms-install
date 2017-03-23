@@ -75,7 +75,7 @@ function  system_init {
         iptables -F
         setenforce 0
         sed -i s/^SELINUX=.*/SELINUX=disable/g /etc/sysconfig/selinux
-        yum install -y  vim autoconf net-tools unzip ntp expect  >> install-$CURRENT_TIME.log 2>&1
+        yum install -y  vim autoconf net-tools unzip ntp expect libaio >> install-$CURRENT_TIME.log 2>&1
 }
 
 function ftp_install {
@@ -144,7 +144,6 @@ function java7_install {
            sed -i '/JRE_HOME/d' /etc/profile
            sed -i '/CLASSPATH/d' /etc/profile
            sed -i '/export PATH/d' /etc/profile
-           [ ! -d "/usr/lib/jvm" ] && mkdir /usr/lib/jvm
            cp $VCPE_HOME/jdk-7u75-linux-x64.tar.gz /usr/local
            cd /usr/local
            rm -rf jdk1.7.0_75
@@ -291,7 +290,7 @@ function tomcat7_install {
         echo "Apache Tomcat is already installed."
       elif [ -f $VCPE_HOME/apache-tomcat-7.0.65.tar.gz ] ; then
         tar -zxf $VCPE_HOME/apache-tomcat-7.0.65.tar.gz -C /usr/local
-        sed -i '/^PRGDIR/a\\CATALINA_OPTS="$CATALINA_OPTS -server -Xmx2048m -XX:MaxPermSize=512m "' $VCPE_HOME/apache-tomcat-7.0.65/bin/catalina.sh
+        sed -i '/^PRGDIR/a\\CATALINA_OPTS="$CATALINA_OPTS -server -Xmx2048m -XX:MaxPermSize=512m "' /usr/local/apache-tomcat-7.0.65/bin/catalina.sh
         echo "Done."
       else
         echo "Tomcat package can not be found，This installation will be exit."
@@ -376,7 +375,7 @@ function sms_install {
           i=1
           SMS_VERSION=()
           echo "SMS version list:"
-          for SMS_PACKAGE in $(ls $SMS_HOME )
+          for SMS_PACKAGE in $(ls $SMS_HOME  )
           do
               echo "[$i] : $SMS_PACKAGE"
               SMS_VERSION[$i]=$SMS_PACKAGE
@@ -392,11 +391,11 @@ function sms_install {
              echo $SMS_PACKAGE
 
              echo "database import..."
-             rm -rf $SMS_HOME/$SMS_PACKAGE/sms-db.sql
-             cd $SMS_HOME/$SMS_PACKAGE ;ls db* > $SMS_HOME/$SMS_PACKAGE/sms-db.sql
-             sed -i s/db_/source\ db_/g $SMS_HOME/$SMS_PACKAGE/sms-db.sql
+             rm -rf $SMS_HOME/$SMS_PACKAGE/DB/sms-db.sql
+             cd $SMS_HOME/$SMS_PACKAGE/DB ;ls db* > $SMS_HOME/$SMS_PACKAGE/DB/sms-db.sql
+             sed -i s/db_/source\ db_/g $SMS_HOME/$SMS_PACKAGE/DB/sms-db.sql
              #cat $SMS_HOME/sms-db.sql
-             cd $SMS_HOME/$SMS_PACKAGE ; mysql -uroot -p$new_password -e"source sms-db.sql;"
+             cd $SMS_HOME/$SMS_PACKAGE/DB ; mysql -uroot -p$new_password -e"source sms-db.sql;"
              echo "manage-web depolyment..."
              [ ! -d /usr/local/apache-tomcat8/backup ] && mkdir /usr/local/apache-tomcat8/backup
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
@@ -607,19 +606,22 @@ function flexinc_install {
 touch install-$CURRENT_TIME.log
 
 while true ; do
-  read -p "Deploy options:[MANO:m or SMS:s or FlexINC:f or QUIT:q]" OK
+  read -p "Deploy options:[MANO:m or SMS:s or QUIT:q]" OK
   case ${OK} in
       m)
-      mano_install ;;
+      mano_install
+      ;;
       s)
       sms_install
-      ftp_install ;;
-      f)
-      flexinc_install ;;
+      ftp_install
+      ;;
+#      f)
+#      flexinc_install
+#      ;;
       q)
       break ;;
       *)
-      echo "Pls enter "m" for MANO,"s" for SMS,"f" for FlexINC,"q" for QUIT."
+      echo "Pls enter "m" for MANO,"s" for SMS,"q" for QUIT."
       continue
       ;;
   esac
