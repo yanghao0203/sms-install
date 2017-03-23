@@ -75,7 +75,12 @@ function  system_init {
         iptables -F
         setenforce 0
         sed -i s/^SELINUX=.*/SELINUX=disable/g /etc/sysconfig/selinux
-        yum install -y  vim autoconf net-tools unzip ntp expect libaio >> install-$CURRENT_TIME.log 2>&1
+        yum install -y  vim autoconf net-tools unzip ntp expect libaio ntp >> install-$CURRENT_TIME.log 2>&1
+        #time zone change
+        #Pacific
+        cp /usr/share/zoneinfo/US/Pacific /etc/localtime
+        service ntpd start
+        systemctl enable ntpd.service
 }
 
 function ftp_install {
@@ -401,6 +406,7 @@ function sms_install {
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
              cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
              systemctl start tomcat.service
+
              echo "Done."
              break
           fi
