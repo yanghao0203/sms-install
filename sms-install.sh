@@ -406,7 +406,23 @@ function sms_install {
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
              cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
              systemctl start tomcat.service
-
+             echo "Pls wait for the vcpe project to start..."
+             while [ [ ! -d /usr/local/apache-tomcat8/vcpe-connector ] || [ ! -d /usr/local/apache-tomcat8/backup ] ] ;
+              do
+                echo "..."
+                sleep 5
+             done
+             echo -n "Pls input the onos ip address:[default:$FLEXINC_IP]"
+             read ip
+             if [ -z $ip ];then
+               ip=$FLEXINC_IP
+             judge_ip($ip)
+             sed -i "s/onos.invoke.address=.*/onos.invoke.address=\"http:\/\/$VCPE_IP:8181\/onos\/vcpena\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.ip=.*/ftp.ip=\"$FTP_IP\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.user=.*/ftp.user=\"$FTP_USER\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.password=.*/ftp.password=\"$FTP_PASSWD\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i '/jdbc.url/s/\([0-9]\{1,3\}.\)\{3\}[0-9]\{1,3\}/127.0.0.1/g' /usr/local/apache-tomcat8/webapps/vcpe-manage-web/WEB-INF/classes/jdbc.properties
+             systemctl restart tomcat.service
              echo "Done."
              break
           fi
@@ -492,6 +508,37 @@ function mano_install {
            cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
        fi
        systemctl start tomcat.service
+       echo "Pls wait for the mano project to start..."
+       while [ [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano ] || [ ! -d /usr/local/apache-tomcat-7.0.65/webapps/mano-vim ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-vnfm ] ] ;
+        do
+          echo "..."
+          sleep 5
+       done
+       #mano
+       ##gui.properties
+       echo -n "Use windriver or other alarm data[default:windriver]:"
+       read type
+       if [ -z $type ] || [ x$type = x"windriver" ] ; then
+           sed -i "s/^Alarm_Page_Switch\ =\ */^Alarm_Page_Switch\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+       else
+         sed -i "s/^Alarm_Page_Switch\ =\ */^Alarm_Page_Switch\ =\ 0/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+         sed -i "s/^AlarmPlatform_X=*/^AlarmPlatform_X=1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+       fi
+       ##stream-config.properties
+       sed -i "s/^STREAM_FILE_LOCAL_REPOSITORY=*/STREAM_FILE_LOCAL_REPOSITORY=\/usr\/local\/apache-tomcat-7.0.65\/webapps\/uploadpath/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/stream-config.properties
+       #mano-vnfm
+       ##mano-common.properties
+
+       #mano-nfvo
+       ##mano-common.properties
+       sed -i "s/^VNFD_SWITCH=*/VNFD_SWITCH=2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
+       sed -i "s/^CONFIGS_SWITCH\ =*/CONFIGS_SWITCH\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
+       #oam_physical_network
+
+       #mano-vim
+       ##
+       sed -i "s/^PROVIDER_SWITCH\ =*/PROVIDER_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
+       sed -i "s/^PHYSICAL_NETWOR_SWITCH\ =*/PHYSICAL_NETWOR_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
        echo "Done."
        break
     fi
