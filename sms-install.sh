@@ -95,9 +95,9 @@ function ftp_install {
           /usr/bin/expect >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1 <<EOF
 set time 1
 spawn passwd $FTP_USER
-expect  "password:"
+expect  "New password:"
 send "$FTP_PASSWD\r"
-expect  "password:"
+expect  "Retype new password:"
 send "$FTP_PASSWD\r"
 EOF
           chown -R $FTP_USER.$FTP_USER /var/ftp/$FTP_USER
@@ -332,9 +332,9 @@ EOF
 }
 
 #sms depoly
-function sms_install {
+function flexsms_install {
 
-        echo "SMS depolyment..."
+        echo "FlexSMS depolyment..."
         system_init
         java8_install
         mysql_install
@@ -404,9 +404,9 @@ function sms_install {
         done
 }
 
-function mano_install {
+function flexsynth_install {
   #statements
-  echo "MANO depolyment..."
+  echo "FlexSYNTH depolyment..."
   system_init
   java7_install
   mysql_install
@@ -492,7 +492,7 @@ function mano_install {
 #flexinc depolyment
 function flexinc_install {
         system_init
-        echo "Flexinc depolyment..."
+        echo "FlexINC depolyment..."
 
         while :
         do
@@ -703,10 +703,10 @@ while true ; do
   read -p "Deploy options:[FlexSYNTH:m FlexSMS:s FlexINC:f or QUIT:q]" OK
   case ${OK} in
       m)
-      mano_install
+      flexsynth_install
       ;;
       s)
-      sms_install
+      flexsms_install
       ftp_install
       ;;
       f)
