@@ -358,7 +358,7 @@ function sms_install {
         java8_install
         mysql_install
         tomcat8_install
-        echo -n "The sms package directory is [default:/home/vcpe/SMS]:"
+        echo -n "The sms package directory is [default:$SMS_HOME]:"
         read sms_home
         if [ -z $sms_home ];then
           if [ -d $SMS_HOME ]; then
@@ -375,7 +375,7 @@ function sms_install {
            exit 1
           fi
         fi
-        while :
+        while true ;
         do
           i=1
           SMS_VERSION=()
@@ -407,8 +407,7 @@ function sms_install {
              cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
              systemctl start tomcat.service
              echo "Pls wait for the vcpe project to start..."
-             while [ [ ! -d /usr/local/apache-tomcat8/vcpe-connector ] || [ ! -d /usr/local/apache-tomcat8/backup ] ] ;
-              do
+             while [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-connector ] || [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-manage-web ] ;do
                 echo "..."
                 sleep 5
              done
@@ -416,11 +415,19 @@ function sms_install {
              read ip
              if [ -z $ip ];then
                ip=$FLEXINC_IP
-             judge_ip($ip)
-             sed -i "s/onos.invoke.address=.*/onos.invoke.address=\"http:\/\/$VCPE_IP:8181\/onos\/vcpena\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
-             sed -i "s/ftp.ip=.*/ftp.ip=\"$FTP_IP\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
-             sed -i "s/ftp.user=.*/ftp.user=\"$FTP_USER\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
-             sed -i "s/ftp.password=.*/ftp.password=\"$FTP_PASSWD\"/g" /usr/local/apache-tomcat8/vcpe-connector/WEB-INF/classes/config.properties
+             else
+               judge_ip $ip
+               j=`echo $?`
+               until [ "$j" -eq 0 ];do
+                echo -e "\033[31m you input error IP：$ip ====>>>>\033[0m"
+                echo  "example "192.168.1.1""
+                break
+              done
+             fi
+             sed -i "s/onos.invoke.address=.*/onos.invoke.address=\"http:\/\/$ip:8181\/onos\/vcpena\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.ip=.*/ftp.ip=\"$FTP_IP\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.user=.*/ftp.user=\"$FTP_USER\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.password=.*/ftp.password=\"$FTP_PASSWD\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
              sed -i '/jdbc.url/s/\([0-9]\{1,3\}.\)\{3\}[0-9]\{1,3\}/127.0.0.1/g' /usr/local/apache-tomcat8/webapps/vcpe-manage-web/WEB-INF/classes/jdbc.properties
              systemctl restart tomcat.service
              echo "Done."
@@ -453,7 +460,7 @@ function mano_install {
   java7_install
   mysql_install
   tomcat7_install
-  echo -n "The mano package directory is [default:/home/vcpe/MANO]:"
+  echo -n "The mano package directory is [default:$MANO_HOME]:"
   read mano_home
   if [ -z $mano_home ];then
     if [ -d $MANO_HOME ]; then
@@ -509,8 +516,7 @@ function mano_install {
        fi
        systemctl start tomcat.service
        echo "Pls wait for the mano project to start..."
-       while [ [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano ] || [ ! -d /usr/local/apache-tomcat-7.0.65/webapps/mano-vim ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-vnfm ] ] ;
-        do
+       while [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano ] || [ ! -d /usr/local/apache-tomcat-7.0.65/webapps/mano-vim ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-vnfm ] ;do
           echo "..."
           sleep 5
        done
@@ -519,26 +525,27 @@ function mano_install {
        echo -n "Use windriver or other alarm data[default:windriver]:"
        read type
        if [ -z $type ] || [ x$type = x"windriver" ] ; then
-           sed -i "s/^Alarm_Page_Switch\ =\ */^Alarm_Page_Switch\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+           sed -i "s/^Alarm_Page_Switch.*/Alarm_Page_Switch\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
        else
-         sed -i "s/^Alarm_Page_Switch\ =\ */^Alarm_Page_Switch\ =\ 0/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
-         sed -i "s/^AlarmPlatform_X=*/^AlarmPlatform_X=1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+         sed -i "s/^Alarm_Page_Switch.*/Alarm_Page_Switch\ =\ 0/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+         sed -i "s/^AlarmPlatform_X=.*/AlarmPlatform_X=1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
        fi
        ##stream-config.properties
-       sed -i "s/^STREAM_FILE_LOCAL_REPOSITORY=*/STREAM_FILE_LOCAL_REPOSITORY=\/usr\/local\/apache-tomcat-7.0.65\/webapps\/uploadpath/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/stream-config.properties
+       sed -i "s/^STREAM_FILE_LOCAL_REPOSITORY=.*/STREAM_FILE_LOCAL_REPOSITORY=\/usr\/local\/apache-tomcat-7.0.65\/webapps\/uploadpath/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/stream-config.properties
        #mano-vnfm
        ##mano-common.properties
 
        #mano-nfvo
        ##mano-common.properties
-       sed -i "s/^VNFD_SWITCH=*/VNFD_SWITCH=2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
-       sed -i "s/^CONFIGS_SWITCH\ =*/CONFIGS_SWITCH\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
+       sed -i "s/^VNFD_SWITCH.*/VNFD_SWITCH=2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
+       sed -i "s/^CONFIGS_SWITCH.*/CONFIGS_SWITCH\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
        #oam_physical_network
 
        #mano-vim
        ##
-       sed -i "s/^PROVIDER_SWITCH\ =*/PROVIDER_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
-       sed -i "s/^PHYSICAL_NETWOR_SWITCH\ =*/PHYSICAL_NETWOR_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
+       #sed -i "s/^PROVIDER_SWITCH.*/PROVIDER_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
+       sed -i '/\#PROVIDER_SWITCH/a\PROVIDER_SWITCH\ =\ 2' /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
+       sed -i "s/^PHYSICAL_NETWOR_SWITCH.*/PHYSICAL_NETWOR_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
        echo "Done."
        break
     fi
@@ -548,7 +555,7 @@ function mano_install {
 function flexinc_install {
         system_init
         echo "Flexinc depolyment..."
-        echo -n "The flexinc package directory is [default:/home/vcpe/ONOS]:"
+        echo -n "The flexinc package directory is [default:$ONOS_HOME]:"
         read onos_home
         if [ -z $onos_home ];then
           if [ -d $ONOS_HOME ]; then
@@ -565,12 +572,38 @@ function flexinc_install {
            exit 1
           fi
         fi
+        rm -rf /opt/.flexinc-config
+        touch /opt/.flexinc-config
+        while :
+        do
+          i=1
+          ONOS_VERSION=()
+          echo "flexinc version list:"
+          for ONOS_PACKAGE in $( ls $ONOS_HOME | grep FlexINC)
+          do
+              echo "[$i] : $ONOS_PACKAGE"
+              ONOS_VERSION[$i]=$ONOS_PACKAGE
+              i=`expr $i + 1`
+          done
+          echo -n "Pls choose flexinc version:"
+          read version
+          if [ -z $version ] || [ $version -ge $i ] ;then
+            echo "Pls input the correct  number!"
+            continue
+           else
+             ONOS_PACKAGE=${ONOS_VERSION[$version]}
+             echo "FLEXINC_NAME=$ONOS_PACKAGE" >> /opt/.flexinc-config
+             break
+          fi
+        done
+
 
         echo -n "the cluster scene:n/y[default:n]"
         read scene
         while true ; do
           if [ x"$scene" = x"y" ] ;then
-            sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
+            #sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
+            echo "isCluster=$scene" >> /opt/.flexinc-config
             while true ; do
               echo -n "ifconfig cluster network card ips:[default:$FLEXINC_IP1,$FLEXINC_IP2,$FLEXINC_IP3]"
               read ips
@@ -586,33 +619,36 @@ function flexinc_install {
                 judge_ip "${ip_array[$a]}"
                 j=`echo $?`
                 until [ "$j" -eq 0 ];do
-                  echo -e "\033[31m you input error IP：${ip_array[$a]} ====>>>>\033[0m"
+                  echo -e "\033[31m You enter error IP：${ip_array[$a]} ====>>>>\033[0m"
                   echo  "example "192.168.1.1""
                   break
                 done
                 b=$[a + 1]
-                sed -i s/FLEXINC_IP$b=.*/FLEXINC_IP$b=${ip_array[$a]}/g $ONOS_HOME/flexinc-run
+                #sed -i s/FLEXINC_IP$b=.*/FLEXINC_IP$b=${ip_array[$a]}/g $ONOS_HOME/flexinc-run
+                echo "FLEXINC_IP$b=${ip_array[$a]}" >> /opt/.flexinc-config
               done
               break 2
             done
 
           elif [ x"$scene" = x"n" ] || [ -z $scene ] ; then
             scene=n
-            sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
+            #sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
+            echo "isCluster=$scene" >> /opt/.flexinc-config
             while true ; do
-              echo -n "ifconfig network card ip:[default:$FLEXINC_IP]"
+              echo -n "Config flexinc ip[default:$FLEXINC_IP]:"
               read ipnew
               if [ -z $ipnew ];then
-                  sed -i s/FLEXINC_IP=.*/FLEXINC_IP=$FLEXINC_IP/g $ONOS_HOME/flexinc-run
+                  #sed -i s/FLEXINC_IP=.*/FLEXINC_IP=$FLEXINC_IP/g $ONOS_HOME/flexinc-run
+                  echo "FLEXINC_IP=$FLEXINC_IP" >> /opt/.flexinc-config
               else
                 judge_ip “${ipnew}”
                 i=`echo $?`
                 until [ "$i" -eq 0 ];do
-                  echo -e "\033[31m you input error IP：${ipnew} ====>>>>\033[0m"
+                  echo -e "\033[31m You enter error IP：${ipnew} ====>>>>\033[0m"
                   echo  "example “192.168.1.1”"
                   break
                 done
-                sed -i s/FLEXINC_IP=.*/FLEXINC_IP=$ipnew/g $ONOS_HOME/flexinc-run
+                echo "FLEXINC_IP=$ipnew" >> /opt/.flexinc-config
               fi
              break 2
            done
@@ -621,45 +657,88 @@ function flexinc_install {
             continue
           fi
         done
+        echo "FLEXINC_USER=root" >> /opt/.flexinc-config
+        echo "PROJECT=flexgw" >> /opt/.flexinc-config
 
         #STB_WEB_URL
-        sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/gw-manage-web\/gw\"/g" $ONOS_HOME/flexinc-run
+        echo "Config STB_WEB_URL..."
+        while true ; do
+          echo -n "Pls enter the ip of vcpe[default:$VCPE_IP]:"
+          read ipnew
+          if [ -z $ipnew ];then
+              #sed -i s/FLEXINC_IP=.*/FLEXINC_IP=$FLEXINC_IP/g $ONOS_HOME/flexinc-run
+              echo "STB_WEB_URL=http://$VCPE_IP:3838/vcpe-manage-web/vcpe" >> /opt/.flexinc-config
+          else
+            judge_ip “${ipnew}”
+            i=`echo $?`
+            until [ "$i" -eq 0 ];do
+              echo -e "\033[31m you input error IP：${ipnew} ====>>>>\033[0m"
+              echo  "example “192.168.1.1”"
+              break
+            done
+            echo "STB_WEB_URL=http://$ipnew:3838/vcpe-manage-web/vcpe" >> /opt/.flexinc-config
+          fi
+         break
+       done
+
+        echo "NETCONFSERVER_USER=foo" >> /opt/.flexinc-config
+        echo "NETCONFSERVER_PASSWORD=bar" >> /opt/.flexinc-config
+
+        #sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/vcpe-manage-web\/vcpe\"/g" $ONOS_HOME/flexinc-run
         #sed -i "/STB_WEB_URL/s/[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*/$VCPE_IP/;s/vcpe/gw/" $ONOS_HOME/flexinc-run
-        chmod a+x $ONOS_HOME/flexinc-run
-        cp $ONOS_HOME/* /opt
+        chmod a+x $ONOS_HOME/$ONOS_PACKAGE/DB/flexinc-setup
+        cp $ONOS_HOME/$ONOS_PACKAGE/DB/flexinc-setup /opt
+        cp $ONOS_HOME/$ONOS_PACKAGE/deploy/* /opt
 
         #cd /opt ; ./flexinc-run install FlexINC_*.tar.gz
-        while :
-        do
-          i=1
-          ONOS_VERSION=()
-          echo "flexinc version list:"
-          for ONOS_PACKAGE in $( ls /opt |grep FlexINC-.*.tar.gz)
-          do
-              echo "[$i] : $ONOS_PACKAGE"
-              ONOS_VERSION[$i]=$ONOS_PACKAGE
-              i=`expr $i + 1`
-          done
-          echo -n "Pls choose flexinc version:"
-          read version
-          if [ -z $version ] || [ $version -ge $i ] ;then
-            echo "Pls input the correct version number!"
-            continue
-           else
-             ONOS_PACKAGE=${ONOS_VERSION[$version]}
-             echo $ONOS_PACKAGE
-             cd /opt ; ./flexinc-run install $ONOS_PACKAGE
-             echo "Done."
-             break
-          fi
-        done
-        cd /opt ; ./flexinc-run start
+        #cd /opt ; ./flexincsh
+        echo "..."
+        cd /opt
+        /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
+#        /usr/bin/expect  <<EOF
+set time 1
+spawn ./flexinc-setup
+expect  "help):"
+send "1\r"
+expect  "project:"
+send "1\r"
+expect "Web URL"
+send "\r"
+expect "Netconf server user name"
+send "\r"
+expect "password"
+send "\r"
+expect "Local node IP"
+send "\r"
+expect "Local node user name"
+send "\r"
+expect "Cluster"
+send "n\r"
+expect "tarball:"
+send "1\r"
+expect "Is this configs correct?"
+send "y\r"
+expect "/root/.ssh/id_rsa"
+send "\r"
+expect "empty for no passphrase"
+send "\r"
+expect "Enter same passphrase again"
+send "\r"
+expect "'s password:"
+send "123456\r"
+set time 35
+expect "help):"
+send "q\r"
+EOF
+        echo "Done"
+
 }
 
 touch install-$CURRENT_TIME.log
+logfile=install-$CURRENT_TIME.log
 
 while true ; do
-  read -p "Deploy options:[MANO:m or SMS:s or QUIT:q]" OK
+  read -p "Deploy options:[FlexSYNTH:m FlexSMS:s FlexINC:f or QUIT:q]" OK
   case ${OK} in
       m)
       mano_install
@@ -668,13 +747,13 @@ while true ; do
       sms_install
       ftp_install
       ;;
-#      f)
-#      flexinc_install
-#      ;;
+      f)
+      flexinc_install
+      ;;
       q)
       break ;;
       *)
-      echo "Pls enter "m" for MANO,"s" for SMS,"q" for QUIT."
+      echo "Pls enter "m" for FlexSYNTH,"s" for FlexSMS,"f" for FlexINC,"q" for QUIT."
       continue
       ;;
   esac
