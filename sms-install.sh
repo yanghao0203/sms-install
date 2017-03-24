@@ -11,9 +11,7 @@
 #fi
 CURRENT_TIME=`date +20%y.%m.%d_%H:%M:%S`
 VCPE_HOME=/home/vcpe
-SMS_HOME=$VCPE_HOME/SMS
-ONOS_HOME=$VCPE_HOME/ONOS
-MANO_HOME=$VCPE_HOME/MANO
+PACKAGE_HOME=/home/US
 JAVA_VERSION=
 old_password=
 new_password=
@@ -75,7 +73,7 @@ function  system_init {
         iptables -F
         setenforce 0
         sed -i s/^SELINUX=.*/SELINUX=disable/g /etc/sysconfig/selinux
-        yum install -y  vim autoconf net-tools unzip ntp expect libaio ntp >> install-$CURRENT_TIME.log 2>&1
+        yum install -y  vim autoconf net-tools unzip ntp expect libaio ntp >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
         #time zone change
         #Pacific
         cp /usr/share/zoneinfo/US/Pacific /etc/localtime
@@ -94,7 +92,7 @@ function ftp_install {
           chkconfig vsftpd on
 
           useradd -d /var/ftp/$FTP_USER -s /sbin/nologin $FTP_USER
-          /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
+          /usr/bin/expect >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1 <<EOF
 set time 1
 spawn passwd $FTP_USER
 expect  "password:"
@@ -224,7 +222,7 @@ function mysql_install {
              new_password=$passwd
           fi
 
-          /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
+          /usr/bin/expect >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1 <<EOF
 set time 1
 spawn mysql -uroot -p$old_password
 expect {
@@ -337,54 +335,24 @@ EOF
 function sms_install {
 
         echo "SMS depolyment..."
-        echo -n "The VCPE package directory is [default:/home/vcpe]:"
-        read vcpe_home
-        if [ -z $vcpe_home ];then
-          if [ -d $VCPE_HOME ]; then
-            echo "Installation begin..."
-          else
-            echo "The directory $VCPE_HOME can not be found,This installation will be exit."
-            exit 1
-          fi
-        else
-          if [ -d $vcpe_home ];then
-            VCPE_HOME=$vcpe_home
-          else
-           echo "The directory $VCPE_HOME can not be found,This installation will be exit."
-           exit 1
-          fi
-        fi
         system_init
         java8_install
         mysql_install
         tomcat8_install
-        echo -n "The sms package directory is [default:$SMS_HOME]:"
-        read sms_home
-        if [ -z $sms_home ];then
-          if [ -d $SMS_HOME ]; then
-            echo "Installation begin..."
-          else
-            echo "The directory $SMS_HOME can not be found,This installation will be exit."
-            exit 1
-          fi
-        else
-          if [ -d $SMS_HOME ];then
-            SMS_HOME=$sms_home
-          else
-           echo "The directory  $SMS_HOME can not be found,This installation will be exit."
-           exit 1
-          fi
-        fi
         while true ;
         do
           i=1
           SMS_VERSION=()
           echo "SMS version list:"
-          for SMS_PACKAGE in $(ls $SMS_HOME  )
+          for SMS_PACKAGE in $(cd $PACKAGE_HOME ;ls FlexSMS* )
           do
+            if [ -z $SMS_PACKAGE ]; then
+              echo "FlexSMS package can't be found.The installation will be exit."
+            else
               echo "[$i] : $SMS_PACKAGE"
               SMS_VERSION[$i]=$SMS_PACKAGE
               i=`expr $i + 1`
+            fi
           done
           echo -n "Pls choose sms version:"
           read version
@@ -396,15 +364,15 @@ function sms_install {
              echo $SMS_PACKAGE
 
              echo "database import..."
-             rm -rf $SMS_HOME/$SMS_PACKAGE/DB/sms-db.sql
-             cd $SMS_HOME/$SMS_PACKAGE/DB ;ls db* > $SMS_HOME/$SMS_PACKAGE/DB/sms-db.sql
-             sed -i s/db_/source\ db_/g $SMS_HOME/$SMS_PACKAGE/DB/sms-db.sql
+             rm -rf $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
+             cd $PACKAGE_HOME/$SMS_PACKAGE/DB ;ls db* > $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
+             sed -i s/db_/source\ db_/g $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              #cat $SMS_HOME/sms-db.sql
-             cd $SMS_HOME/$SMS_PACKAGE/DB ; mysql -uroot -p$new_password -e"source sms-db.sql;"
+             cd $PACKAGE_HOME/$SMS_PACKAGE/DB ; mysql -uroot -p$new_password -e"source sms-db.sql;"
              echo "manage-web depolyment..."
              [ ! -d /usr/local/apache-tomcat8/backup ] && mkdir /usr/local/apache-tomcat8/backup
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
-             cp $SMS_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
+             cp $PACKAGE_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
              systemctl start tomcat.service
              echo "Pls wait for the vcpe project to start..."
              while [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-connector ] || [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-manage-web ] ;do
@@ -439,54 +407,24 @@ function sms_install {
 function mano_install {
   #statements
   echo "MANO depolyment..."
-  echo -n "The vcpe package directory is [default:/home/vcpe]:"
-  read vcpe_home
-  if [ -z $vcpe_home ];then
-    if [ -d $VCPE_HOME ]; then
-      echo "Installation begin..."
-    else
-      echo "The directory $VCPE_HOME can not be found,This installation will be exit."
-      exit 1
-    fi
-  else
-    if [ -d $vcpe_home ];then
-      VCPE_HOME=$vcpe_home
-    else
-     echo "The directory $VCPE_HOME can not be found,This installation will be exit."
-     exit 1
-    fi
-  fi
   system_init
   java7_install
   mysql_install
   tomcat7_install
-  echo -n "The mano package directory is [default:$MANO_HOME]:"
-  read mano_home
-  if [ -z $mano_home ];then
-    if [ -d $MANO_HOME ]; then
-      echo "Installation begin..."
-    else
-      echo "The directory can not be found,This installation will be exit."
-      exit 1
-    fi
-  else
-    if [ -d $MANO_HOME ];then
-      MANO_HOME=$mano_home
-    else
-     echo "The directory can not be found,This installation will be exit."
-     exit 1
-    fi
-  fi
   while true :
   do
     i=1
     MANO_VERSION=()
     echo "Mano version list:"
-    for MANO_PACKAGE in $(ls $MANO_HOME )
+    for MANO_PACKAGE in $(cd $PACKAGE_HOME ;ls FlexSYNTH* )
     do
+      if [ -z $MANO_PACKAGE ]; then
+        echo "FlexSYNTH package can't be found.The installation will quit."
+      else
         echo "[$i] : $MANO_PACKAGE"
         SMS_VERSION[$i]=$MANO_PACKAGE
         i=`expr $i + 1`
+      fi
     done
     echo -n "Pls choose mano version:"
     read version
@@ -498,21 +436,21 @@ function mano_install {
        echo $MANO_PACKAGE
 
        echo "database import..."
-       rm -rf $MANO_HOME/$MANO_PACKAGE/sql/sms-db.sql
-       cd $MANO_HOME/$MANO_PACKAGE/sql ;ls db* > $MANO_HOME/$MANO_PACKAGE/sql/sms-db.sql
-       sed -i s/db/source\ db/g $MANO_HOME/$MANO_PACKAGE/sql/sms-db.sql
+       rm -rf $PACKAGE_HOME/$MANO_PACKAGE/sql/sms-db.sql
+       cd $PACKAGE_HOME/$MANO_PACKAGE/sql ;ls db* > $PACKAGE_HOME/$MANO_PACKAGE/sql/sms-db.sql
+       sed -i s/db/source\ db/g $PACKAGE_HOME/$MANO_PACKAGE/sql/sms-db.sql
        #cat $SMS_HOME/sms-db.sql
-       cd $MANO_HOME/$MANO_PACKAGE/sql ; mysql -uroot -p$new_password -e"source sms-db.sql;"
+       cd $PACKAGE_HOME/$MANO_PACKAGE/sql ; mysql -uroot -p$new_password -e"source sms-db.sql;"
        echo "Mano-web depolyment..."
        [ ! -d /usr/local/apache-tomcat-7.0.65/backup ] && mkdir /usr/local/apache-tomcat-7.0.65/backup
        cp /usr/local/apache-tomcat-7.0.65/webapps/*.war* /usr/local/apache-tomcat-7.0.65/backup/
-       cp $MANO_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat-7.0.65/webapps
+       cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat-7.0.65/webapps
        echo -n "Use windriver or openstack?[default:windriver]:"
        read type
        if [ -z $type ] || [ x$type = x"windriver" ] ; then
-           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-1512 /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
+           cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/mano-vim.war-1512 /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
        else
-           cp $MANO_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
+           cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
        fi
        systemctl start tomcat.service
        echo "Pls wait for the mano project to start..."
@@ -555,36 +493,24 @@ function mano_install {
 function flexinc_install {
         system_init
         echo "Flexinc depolyment..."
-        echo -n "The flexinc package directory is [default:$ONOS_HOME]:"
-        read onos_home
-        if [ -z $onos_home ];then
-          if [ -d $ONOS_HOME ]; then
-            echo "Installation begin..."
-          else
-            echo "The directory $ONOS_HOME can not be found,This installation will be exit."
-            exit 1
-          fi
-        else
-          if [ -d $onos_home ];then
-            ONOS_HOME=$onos_home
-          else
-           echo "The directory  $ONOS_HOME can not be found,This installation will be exit."
-           exit 1
-          fi
-        fi
-        rm -rf /opt/.flexinc-config
-        touch /opt/.flexinc-config
+
         while :
         do
           i=1
           ONOS_VERSION=()
           echo "flexinc version list:"
-          for ONOS_PACKAGE in $( ls $ONOS_HOME | grep FlexINC)
+          for ONOS_PACKAGE in $(cd $PACKAGE_HOME ;ls FlexINC*)
           do
+            if [ -z $ONOS_PACKAGE ]; then
+                echo "FlexINC package can't be found.The installation will quit."
+            else
               echo "[$i] : $ONOS_PACKAGE"
               ONOS_VERSION[$i]=$ONOS_PACKAGE
               i=`expr $i + 1`
+            fi
           done
+          rm -rf /opt/.flexinc-config
+          touch /opt/.flexinc-config
           echo -n "Pls choose flexinc version:"
           read version
           if [ -z $version ] || [ $version -ge $i ] ;then
@@ -686,15 +612,15 @@ function flexinc_install {
 
         #sed -i "s/STB_WEB_URL=.*/STB_WEB_URL=\"http:\/\/$VCPE_IP:3838\/vcpe-manage-web\/vcpe\"/g" $ONOS_HOME/flexinc-run
         #sed -i "/STB_WEB_URL/s/[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*/$VCPE_IP/;s/vcpe/gw/" $ONOS_HOME/flexinc-run
-        chmod a+x $ONOS_HOME/$ONOS_PACKAGE/DB/flexinc-setup
-        cp $ONOS_HOME/$ONOS_PACKAGE/DB/flexinc-setup /opt
-        cp $ONOS_HOME/$ONOS_PACKAGE/deploy/* /opt
+        chmod a+x $PACKAGE_HOME/$ONOS_PACKAGE/DB/flexinc-setup
+        cp $PACKAGE_HOME/$ONOS_PACKAGE/DB/flexinc-setup /opt
+        cp $PACKAGE_HOME/$ONOS_PACKAGE/deploy/* /opt
 
         #cd /opt ; ./flexinc-run install FlexINC_*.tar.gz
         #cd /opt ; ./flexincsh
         echo "..."
         cd /opt
-        /usr/bin/expect >> install-$CURRENT_TIME.log 2>&1 <<EOF
+        /usr/bin/expect >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1 <<EOF
 #        /usr/bin/expect  <<EOF
 set time 1
 spawn ./flexinc-setup
@@ -734,8 +660,44 @@ EOF
 
 }
 
-touch install-$CURRENT_TIME.log
+cd $VCPE_HOME ; touch install-$CURRENT_TIME.log
 logfile=install-$CURRENT_TIME.log
+
+echo -n "The VCPE directory is [default:$VCPE_HOME]:"
+read vcpe_home
+if [ -z $vcpe_home ];then
+  if [ -d $VCPE_HOME ]; then
+    echo "Installation begin..."
+  else
+    echo "The directory $VCPE_HOME can not be found,The installation will be exit."
+    exit 1
+  fi
+else
+  if [ -d $vcpe_home ];then
+    VCPE_HOME=$vcpe_home
+  else
+   echo "The directory $VCPE_HOME can not be found,The installation will be exit."
+   exit 1
+  fi
+fi
+
+echo -n "The package directory is [default:$PACKAGE_HOME]:"
+read package_home
+if [ -z $package_home ];then
+  if [ -d $PACKAGE_HOME ]; then
+    echo "Installation begin..."
+  else
+    echo "The directory $PACKAGE_HOME can not be found,The installation will be exit."
+    exit 1
+  fi
+else
+  if [ -d $package_home ];then
+    PACKAGE_HOME=$package_home
+  else
+   echo "The directory  $PACKAGE_HOME can not be found,The installation will be exit."
+   exit 1
+  fi
+fi
 
 while true ; do
   read -p "Deploy options:[FlexSYNTH:m FlexSMS:s FlexINC:f or QUIT:q]" OK
