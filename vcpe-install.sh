@@ -457,11 +457,12 @@ function flexsynth_install {
        echo "FlexSYNTH project configuration."
        echo "Pls wait for the FlexSYNTH project to start..."
        while [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano ] || [ ! -d /usr/local/apache-tomcat-7.0.65/webapps/mano-vim ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-vnfm ] ;do
-          echo "..."
+          echo -n "..."
           sleep 5
        done
        #mano
        ##gui.properties
+       echo ""
        echo -n "Use windriver or other alarm data[default:windriver]:"
        read type
        if [ -z $type ] || [ x$type = x"windriver" ] ; then
