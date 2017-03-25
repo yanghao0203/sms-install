@@ -11,7 +11,7 @@
 #fi
 CURRENT_TIME=`date +20%y.%m.%d_%H:%M:%S`
 VCPE_HOME=/home/vcpe
-PACKAGE_HOME=/home/US
+PACKAGE_HOME=/home/FlexBS-vCPE-US-v1.0.3
 JAVA_VERSION=
 old_password=
 new_password=
@@ -130,7 +130,7 @@ function java8_install {
            echo 'export JRE_HOME=$JAVA_HOME/jre' >> /etc/profile
            echo 'export CLASSPATH=.:$CLASSPATH:$JAVA_HOME/lib:$JRE_HOME/lib' >> /etc/profile
            echo 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' >> /etc/profile
-           sh /etc/profile
+           /bin/sh /etc/profile
            echo "Done."
         fi
 
@@ -154,7 +154,7 @@ function java7_install {
            echo 'export JAVA_HOME=/usr/local/jdk1.7.0_75' >> /etc/profile
            echo 'export CLASSPATH==.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar' >> /etc/profile
            echo 'export PATH==$PATH:$JAVA_HOME/bin' >> /etc/profile
-           sh /etc/profile
+           /bin/sh /etc/profile
            echo "Done."
         fi
 }
@@ -344,7 +344,7 @@ function flexsms_install {
           i=1
           SMS_VERSION=()
           echo "SMS version list:"
-          for SMS_PACKAGE in $(cd $PACKAGE_HOME ;ls FlexSMS* )
+          for SMS_PACKAGE in $(find $PACKAGE_HOME -name FlexSMS* -exec basename {} \; )
           do
             if [ -z $SMS_PACKAGE ]; then
               echo "FlexSMS package can't be found.The installation will be exit."
@@ -416,7 +416,7 @@ function flexsynth_install {
     i=1
     MANO_VERSION=()
     echo "Mano version list:"
-    for MANO_PACKAGE in $(cd $PACKAGE_HOME ;ls FlexSYNTH* )
+    for MANO_PACKAGE in $(find $PACKAGE_HOME -name FlexSYNTH* -exec basename {} \;)
     do
       if [ -z $MANO_PACKAGE ]; then
         echo "FlexSYNTH package can't be found.The installation will quit."
@@ -484,6 +484,7 @@ function flexsynth_install {
        #sed -i "s/^PROVIDER_SWITCH.*/PROVIDER_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
        sed -i '/\#PROVIDER_SWITCH/a\PROVIDER_SWITCH\ =\ 2' /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
        sed -i "s/^PHYSICAL_NETWOR_SWITCH.*/PHYSICAL_NETWOR_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
+       service tomcat restart
        echo "Done."
        break
     fi
@@ -499,7 +500,7 @@ function flexinc_install {
           i=1
           ONOS_VERSION=()
           echo "flexinc version list:"
-          for ONOS_PACKAGE in $(cd $PACKAGE_HOME ;ls FlexINC*)
+          for ONOS_PACKAGE in $(find $PACKAGE_HOME -name FlexINC* -exec basename {} \;)
           do
             if [ -z $ONOS_PACKAGE ]; then
                 echo "FlexINC package can't be found.The installation will quit."
@@ -622,7 +623,7 @@ function flexinc_install {
         cd /opt
         /usr/bin/expect >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1 <<EOF
 #        /usr/bin/expect  <<EOF
-set time 1
+set timeout 120
 spawn ./flexinc-setup
 expect  "help):"
 send "1\r"
@@ -650,9 +651,10 @@ expect "empty for no passphrase"
 send "\r"
 expect "Enter same passphrase again"
 send "\r"
+expect "want to continue connecting (yes/no)?"
+send "yes\r"
 expect "'s password:"
 send "123456\r"
-set timeout 35
 expect "help):"
 send "q\r"
 EOF
