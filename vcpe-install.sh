@@ -377,9 +377,10 @@ function flexsms_install {
              echo "FlexSMS project configuration."
              echo "Pls wait for the FlexSMS project to start..."
              while [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-connector ] || [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-manage-web ] ;do
-                echo "..."
+                echo -n "..."
                 sleep 5
              done
+             echo ""
              echo -n "Pls input the onos ip address:[default:$FLEXINC_IP]"
              read ip
              if [ -z $ip ];then
