@@ -193,9 +193,9 @@ function mysql_install {
         #             echo $MYSQL_VERSION
                      tar -xf $MYSQL_VERSION -C $VCPE_HOME
                      echo "mysql-server and mysql-client is installing..."
-                     rpm -ivh $VCPE_HOME/MySQL-client-*.rpm  >> install-$CURRENT_TIME.log 2>&1
-                     rpm -ivh $VCPE_HOME/MySQL-server-*.rpm  >> install-$CURRENT_TIME.log 2>&1
-                     rpm -ivh $VCPE_HOME/MySQL-devel-*.rpm  >> install-$CURRENT_TIME.log 2>&1
+                     rpm -ivh $VCPE_HOME/MySQL-client-*.rpm  >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
+                     rpm -ivh $VCPE_HOME/MySQL-server-*.rpm  >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
+                     rpm -ivh $VCPE_HOME/MySQL-devel-*.rpm  >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
                      rm -rf $VCPE_HOME/MySQL-*.rpm
                      echo "Done."
                      break
@@ -652,10 +652,13 @@ expect "Enter same passphrase again"
 send "\r"
 expect "'s password:"
 send "123456\r"
-set time 35
+set timeout 35
 expect "help):"
 send "q\r"
 EOF
+
+        echo "/opt/flexinc/bin/flexinc-run start" > /etc/rc.local
+        chmod a+x /etc/rc.d/rc.local
         echo "Done"
 
 }
