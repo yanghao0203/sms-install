@@ -10,7 +10,7 @@
 #  source install.config
 #fi
 CURRENT_TIME=`date +20%y.%m.%d_%H:%M:%S`
-VCPE_HOME=/home/vcpe
+VCPE_HOME=/home/vcpe-basic
 PACKAGE_HOME=/home/FlexBS-vCPE-US-v1.0.3
 JAVA_VERSION=
 old_password=
@@ -659,7 +659,7 @@ expect "help):"
 send "q\r"
 EOF
 
-        echo "/opt/flexinc/bin/flexinc-run start" > /etc/rc.local
+        echo "/opt/flexinc/bin/flexinc-run start" >> /etc/rc.local
         chmod a+x /etc/rc.d/rc.local
         echo "Done"
 
