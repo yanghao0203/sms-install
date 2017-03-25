@@ -374,7 +374,8 @@ function flexsms_install {
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
              cp $PACKAGE_HOME/$SMS_PACKAGE/*.war /usr/local/apache-tomcat8/webapps
              systemctl start tomcat.service
-             echo "Pls wait for the vcpe project to start..."
+             echo "FlexSMS project configuration."
+             echo "Pls wait for the FlexSMS project to start..."
              while [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-connector ] || [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-manage-web ] ;do
                 echo "..."
                 sleep 5
@@ -453,7 +454,8 @@ function flexsynth_install {
            cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
        fi
        systemctl start tomcat.service
-       echo "Pls wait for the mano project to start..."
+       echo "FlexSYNTH project configuration."
+       echo "Pls wait for the FlexSYNTH project to start..."
        while [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano ] || [ ! -d /usr/local/apache-tomcat-7.0.65/webapps/mano-vim ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-vnfm ] ;do
           echo "..."
           sleep 5
