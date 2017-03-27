@@ -70,15 +70,38 @@ function  system_init {
         echo "System initialization....."
         echo "nameserver 114.114.114.114" >> /etc/resolv.conf
         echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-        iptables -F
         setenforce 0
-        sed -i s/^SELINUX=.*/SELINUX=disable/g /etc/sysconfig/selinux
+        sed -i s/^SELINUX=.*/SELINUX=disabled/g /etc/sysconfig/selinux
         yum install -y  vim autoconf net-tools unzip ntp expect libaio ntp >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
         #time zone change
         #Pacific
         cp /usr/share/zoneinfo/US/Pacific /etc/localtime
         service ntpd start
         systemctl enable ntpd.service
+}
+
+function sms_init {
+        #firewall
+        firewall-cmd --zone=public --add-port=6633/tcp --permanent
+        firewall-cmd --zone=public --add-port=6653/tcp --permanent
+        firewall-cmd --zone=public --add-port=6640/tcp --permanent
+        firewall-cmd --zone=public --add-port=8181/tcp --permanent
+        firewall-cmd --zone=public --add-port=9876/tcp --permanent
+        firewall-cmd --zone=public --add-port=8300/tcp --permanent
+        firewall-cmd --zone=public --add-port=3838/tcp --permanent
+        firewall-cmd --reload
+        #hostname
+        hostnamectl set-hostname flexsms
+        echo "127.0.0.1   flexsms" >> /etc/hosts
+}
+
+function  mano_init {
+        #firewall
+        firewall-cmd --zone=public --add-port=8080/tcp --permanent
+        firewall-cmd --reload
+        #hostname
+        hostnamectl set-hostname flexsynth
+        echo "127.0.0.1   flexsynth" >> /etc/hosts
 }
 
 function ftp_install {
@@ -336,9 +359,11 @@ function flexsms_install {
 
         echo "FlexSMS depolyment..."
         system_init
+        sms_init
         java8_install
         mysql_install
         tomcat8_install
+
         while true ;
         do
           i=1
@@ -364,11 +389,12 @@ function flexsms_install {
              echo $SMS_PACKAGE
 
              echo "database import..."
+             mysql -uroot -p$new_password -e"create database db_flex_os_poc;"
              rm -rf $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              cd $PACKAGE_HOME/$SMS_PACKAGE/DB ;ls db* > $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              sed -i s/db_/source\ db_/g $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              #cat $SMS_HOME/sms-db.sql
-             cd $PACKAGE_HOME/$SMS_PACKAGE/DB ; mysql -uroot -p$new_password -e"source sms-db.sql;"
+             cd $PACKAGE_HOME/$SMS_PACKAGE/DB ; mysql -uroot -p$new_password  -Ddb_flex_os_poc -e"source sms-db.sql;"
              echo "manage-web depolyment..."
              [ ! -d /usr/local/apache-tomcat8/backup ] && mkdir /usr/local/apache-tomcat8/backup
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
@@ -410,9 +436,11 @@ function flexsynth_install {
   #statements
   echo "FlexSYNTH depolyment..."
   system_init
+  mano_init
   java7_install
   mysql_install
   tomcat7_install
+
   while true :
   do
     i=1
@@ -669,7 +697,7 @@ EOF
 
 }
 
-cd $VCPE_HOME ; touch install-$CURRENT_TIME.log
+touch /home/install-$CURRENT_TIME.log
 logfile=install-$CURRENT_TIME.log
 
 echo -n "The VCPE directory is [default:$VCPE_HOME]:"
@@ -678,8 +706,7 @@ if [ -z $vcpe_home ];then
   if [ -d $VCPE_HOME ]; then
     echo "Installation begin..."
   else
-    echo "The directory $VCPE_HOME can not be found,The installation will be exit."
-    exit 1
+    cd /home ; tar -zxvf vcpe-basic.tar.gz
   fi
 else
   if [ -d $vcpe_home ];then
