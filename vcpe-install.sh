@@ -72,7 +72,7 @@ function  system_init {
         echo "nameserver 8.8.8.8" >> /etc/resolv.conf
         setenforce 0
         sed -i s/^SELINUX=.*/SELINUX=disabled/g /etc/sysconfig/selinux
-        yum install -y  vim autoconf net-tools unzip ntp expect libaio ntp >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
+        yum install -y  vim autoconf net-tools unzip ntp expect libaio >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
         #time zone change
         #Pacific
         cp /usr/share/zoneinfo/US/Pacific /etc/localtime
@@ -194,7 +194,7 @@ function mysql_install {
            if [ $rpm ] ; then
               echo "MySQL is already installed."
            elif [ -f $VCPE_HOME/MySQL-*.tar ] ; then
-                echo "Installing MySQL package....[default:MySQL-5.6.35-1.el6.x86_64.rpm-bundle.tar]"
+                echo "Installing MySQL package..."
                 while :
                 do
                   i=1
@@ -491,15 +491,15 @@ function flexsynth_install {
        done
        #mano
        ##gui.properties
-       echo ""
-       echo -n "Use windriver or other alarm data[default:windriver]:"
-       read type
-       if [ -z $type ] || [ x$type = x"windriver" ] ; then
-           sed -i "s/^Alarm_Page_Switch.*/Alarm_Page_Switch\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
-       else
-         sed -i "s/^Alarm_Page_Switch.*/Alarm_Page_Switch\ =\ 0/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
-         sed -i "s/^AlarmPlatform_X=.*/AlarmPlatform_X=1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
-       fi
+#       echo ""
+#       echo -n "Use windriver or other alarm data[default:windriver]:"
+#       read type
+#       if [ -z $type ] || [ x$type = x"windriver" ] ; then
+#         sed -i "s/^Alarm_Page_Switch.*/Alarm_Page_Switch\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+#       else
+#         sed -i "s/^Alarm_Page_Switch.*/Alarm_Page_Switch\ =\ 0/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+#         sed -i "s/^AlarmPlatform_X=.*/AlarmPlatform_X=1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
+#       fi
        ##stream-config.properties
        sed -i "s/^STREAM_FILE_LOCAL_REPOSITORY=.*/STREAM_FILE_LOCAL_REPOSITORY=\/usr\/local\/apache-tomcat-7.0.65\/webapps\/uploadpath/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/stream-config.properties
        #mano-vnfm
