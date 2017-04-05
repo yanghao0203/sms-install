@@ -396,7 +396,7 @@ function flexsms_install {
              cd $PACKAGE_HOME/$SMS_PACKAGE/DB ;ls db* > $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              sed -i s/db_/source\ db_/g $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              #cat $SMS_HOME/sms-db.sql
-             cd $PACKAGE_HOME/$SMS_PACKAGE/DB ; mysql -uroot -p$new_password  -Ddb_flex_os -e"source sms-db.sql;"
+             cd $PACKAGE_HOME/$SMS_PACKAGE/DB ; mysql -uroot -p$new_password  -Ddb_flex_so -e"source sms-db.sql;"
              echo "manage-web depolyment..."
              [ ! -d /usr/local/apache-tomcat8/backup ] && mkdir /usr/local/apache-tomcat8/backup
              cp /usr/local/apache-tomcat8/webapps/*.war /usr/local/apache-tomcat8/backup/
