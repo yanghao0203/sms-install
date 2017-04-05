@@ -11,7 +11,7 @@
 #fi
 CURRENT_TIME=`date +20%y.%m.%d_%H:%M:%S`
 VCPE_HOME=/home/vcpe-basic
-PACKAGE_HOME=/home/FlexBS-vCPE-US-v1.0.3
+PACKAGE_HOME=/home/FlexBS-vCPE-US-v1.0.x
 JAVA_VERSION=
 old_password=
 new_password=
@@ -27,6 +27,7 @@ FTP_IP=$LOCALIP
 FTP_PORT=21
 FTP_USER=certus
 FTP_PASSWD=certus123
+VCPE_DBNAME=db_flex_so
 
 function judge_ip(){
 
@@ -77,6 +78,7 @@ function  system_init {
         #Pacific
         cp /usr/share/zoneinfo/US/Pacific /etc/localtime
         service ntpd start
+        hwclock -w
         systemctl enable ntpd.service
 }
 
@@ -389,7 +391,7 @@ function flexsms_install {
              echo $SMS_PACKAGE
 
              echo "database import..."
-             mysql -uroot -p$new_password -e"create database db_flex_os_poc;"
+             mysql -uroot -p$new_password -e"create database db_flex_so;"
              rm -rf $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              cd $PACKAGE_HOME/$SMS_PACKAGE/DB ;ls db* > $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
              sed -i s/db_/source\ db_/g $PACKAGE_HOME/$SMS_PACKAGE/DB/sms-db.sql
@@ -424,7 +426,9 @@ function flexsms_install {
              sed -i "s/ftp.ip=.*/ftp.ip=\"$FTP_IP\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
              sed -i "s/ftp.user=.*/ftp.user=\"$FTP_USER\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
              sed -i "s/ftp.password=.*/ftp.password=\"$FTP_PASSWD\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i  's/\.\.\/logs/'${TOMCAT_HOME//\//\\/}'\/logs/' /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/log4j.xml
              sed -i '/jdbc.url/s/\([0-9]\{1,3\}.\)\{3\}[0-9]\{1,3\}/127.0.0.1/g' /usr/local/apache-tomcat8/webapps/vcpe-manage-web/WEB-INF/classes/jdbc.properties
+             sed -i  's/\.\.\/logs/'${TOMCAT_HOME//\//\\/}'\/logs/' /usr/local/apache-tomcat8/webapps/vcpe-manage-web/WEB-INF/classes/log4j.xml
              systemctl restart tomcat.service
              echo "Done."
              break
