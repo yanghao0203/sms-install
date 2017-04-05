@@ -598,7 +598,7 @@ function flexinc_install {
             #sed -i s/isCluster=.*/isCluster=$scene/g $ONOS_HOME/flexinc-run
             echo "isCluster=$scene" >> /opt/.flexinc-config
             while true ; do
-              echo -n "Config flexinc ip[default:$FLEXINC_IP]:"
+              echo -n "Config flexinc ip,make sure this ip can connect to flexGW.[default:$FLEXINC_IP]:"
               read ipnew
               if [ -z $ipnew ];then
                   #sed -i s/FLEXINC_IP=.*/FLEXINC_IP=$FLEXINC_IP/g $ONOS_HOME/flexinc-run
