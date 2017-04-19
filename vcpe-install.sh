@@ -12,7 +12,6 @@
 CURRENT_TIME=`date +20%y.%m.%d_%H:%M:%S`
 VCPE_HOME=/home/vcpe-basic
 PACKAGE_HOME=/home/FlexBS-vCPE-US-v1.0.x
-JAVA_VERSION=
 old_password=
 new_password=
 isCluster=n
@@ -69,8 +68,8 @@ function judge_ip(){
 #Initialization
 function  system_init {
         echo "System initialization....."
-        echo "nameserver 114.114.114.114" >> /etc/resolv.conf
         echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
         setenforce 0
         sed -i s/^SELINUX=.*/SELINUX=disabled/g /etc/sysconfig/selinux
         yum install -y  vim autoconf net-tools unzip ntp expect libaio >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1
@@ -117,14 +116,7 @@ function ftp_install {
           chkconfig vsftpd on
 
           useradd -d /var/ftp/$FTP_USER -s /sbin/nologin $FTP_USER
-          /usr/bin/expect >> $VCPE_HOME/install-$CURRENT_TIME.log 2>&1 <<EOF
-set time 1
-spawn passwd $FTP_USER
-expect  "New password:"
-send "$FTP_PASSWD\r"
-expect  "Retype new password:"
-send "$FTP_PASSWD\r"
-EOF
+          echo $FTP_PASSWD | passwd $FTP_PASSWD --stdin
           chown -R $FTP_USER.$FTP_USER /var/ftp/$FTP_USER
          else
            echo "FTP server is alreay installed."
@@ -366,6 +358,8 @@ function flexsms_install {
         mysql_install
         tomcat8_install
 
+        TOMCAT_HOME=/usr/local/apache-tomcat8/
+
         while true ;
         do
           i=1
@@ -404,7 +398,7 @@ function flexsms_install {
              systemctl start tomcat.service
              echo "FlexSMS project configuration."
              echo "Pls wait for the FlexSMS project to start..."
-             while [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-connector ] || [ ! -d /usr/local/apache-tomcat8/webapps/vcpe-manage-web ] ;do
+             while [ ! -d $TOMCAT_HOME/webapps/vcpe-connector ] || [ ! -d $TOMCAT_HOME/webapps/vcpe-manage-web ] ;do
                 echo -n "..."
                 sleep 5
              done
@@ -422,13 +416,13 @@ function flexsms_install {
                 break
               done
              fi
-             sed -i "s/onos.invoke.address=.*/onos.invoke.address=\"http:\/\/$ip:8181\/onos\/vcpena\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
-             sed -i "s/ftp.ip=.*/ftp.ip=\"$FTP_IP\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
-             sed -i "s/ftp.user=.*/ftp.user=\"$FTP_USER\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
-             sed -i "s/ftp.password=.*/ftp.password=\"$FTP_PASSWD\"/g" /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/config.properties
-             sed -i  's/\.\.\/logs/'${TOMCAT_HOME//\//\\/}'\/logs/' /usr/local/apache-tomcat8/webapps/vcpe-connector/WEB-INF/classes/log4j.xml
-             sed -i '/jdbc.url/s/\([0-9]\{1,3\}.\)\{3\}[0-9]\{1,3\}/127.0.0.1/g' /usr/local/apache-tomcat8/webapps/vcpe-manage-web/WEB-INF/classes/jdbc.properties
-             sed -i  's/\.\.\/logs/'${TOMCAT_HOME//\//\\/}'\/logs/' /usr/local/apache-tomcat8/webapps/vcpe-manage-web/WEB-INF/classes/log4j.xml
+             sed -i "s/onos.invoke.address=.*/onos.invoke.address=\"http:\/\/$ip:8181\/onos\/vcpena\"/g" $TOMCAT_HOME/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.ip=.*/ftp.ip=\"$FTP_IP\"/g" $TOMCAT_HOME/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.user=.*/ftp.user=\"$FTP_USER\"/g" $TOMCAT_HOME/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i "s/ftp.password=.*/ftp.password=\"$FTP_PASSWD\"/g" $TOMCAT_HOME/webapps/vcpe-connector/WEB-INF/classes/config.properties
+             sed -i  's/\.\.\/logs/'${TOMCAT_HOME//\//\\/}'\/logs/' $TOMCAT_HOME/webapps/vcpe-connector/WEB-INF/classes/log4j.xml
+             sed -i '/jdbc.url/s/\([0-9]\{1,3\}.\)\{3\}[0-9]\{1,3\}/127.0.0.1/g' $TOMCAT_HOME/webapps/vcpe-manage-web/WEB-INF/classes/jdbc.properties
+             sed -i  's/\.\.\/logs/'${TOMCAT_HOME//\//\\/}'\/logs/' $TOMCAT_HOME/webapps/vcpe-manage-web/WEB-INF/classes/log4j.xml
              systemctl restart tomcat.service
              echo "Done."
              break
@@ -444,6 +438,8 @@ function flexsynth_install {
   java7_install
   mysql_install
   tomcat7_install
+
+  TOMCAT_HOME=/usr/local/apache-tomcat-7.0.65
 
   while true :
   do
@@ -476,20 +472,21 @@ function flexsynth_install {
        #cat $SMS_HOME/sms-db.sql
        cd $PACKAGE_HOME/$MANO_PACKAGE/sql ; mysql -uroot -p$new_password -e"source sms-db.sql;"
        echo "Mano-web depolyment..."
-       [ ! -d /usr/local/apache-tomcat-7.0.65/backup ] && mkdir /usr/local/apache-tomcat-7.0.65/backup
-       cp /usr/local/apache-tomcat-7.0.65/webapps/*.war* /usr/local/apache-tomcat-7.0.65/backup/
-       cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/*.war /usr/local/apache-tomcat-7.0.65/webapps
+       [ ! -d $TOMCAT_HOME/backup ] && mkdir $TOMCAT_HOME/backup
+       cp $TOMCAT_HOME/webapps/mano*.war* $TOMCAT_HOME/backup/
+       rm -rf $TOMCAT_HOME/webapps/mano*.war*
+       cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/*.war $TOMCAT_HOME/webapps
        echo -n "Use windriver or openstack?[default:windriver]:"
        read type
        if [ -z $type ] || [ x$type = x"windriver" ] ; then
-           cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/mano-vim.war-1512 /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
+           cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/mano-vim.war-1512 $TOMCAT_HOME/webapps/mano-vim.war
        else
-           cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m /usr/local/apache-tomcat-7.0.65/webapps/mano-vim.war
+           cp $PACKAGE_HOME/$MANO_PACKAGE/deploy/mano-vim.war-m $TOMCAT_HOME/webapps/mano-vim.war
        fi
        systemctl start tomcat.service
        echo "FlexSYNTH project configuration."
        echo "Pls wait for the FlexSYNTH project to start..."
-       while [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano ] || [ ! -d /usr/local/apache-tomcat-7.0.65/webapps/mano-vim ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo ] || [ ! /usr/local/apache-tomcat-7.0.65/webapps/mano-vnfm ] ;do
+       while [ ! $TOMCAT_HOME/webapps/mano ] || [ ! -d $TOMCAT_HOME/webapps/mano-vim ] || [ ! $TOMCAT_HOME/webapps/mano-nfvo ] || [ ! $TOMCAT_HOME/webapps/mano-vnfm ] ;do
           echo -n "..."
           sleep 5
        done
@@ -505,21 +502,21 @@ function flexsynth_install {
 #         sed -i "s/^AlarmPlatform_X=.*/AlarmPlatform_X=1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/gui.properties
 #       fi
        ##stream-config.properties
-       sed -i "s/^STREAM_FILE_LOCAL_REPOSITORY=.*/STREAM_FILE_LOCAL_REPOSITORY=\/usr\/local\/apache-tomcat-7.0.65\/webapps\/uploadpath/g" /usr/local/apache-tomcat-7.0.65/webapps/mano/WEB-INF/classes/stream-config.properties
+       sed -i "s/^STREAM_FILE_LOCAL_REPOSITORY=.*/STREAM_FILE_LOCAL_REPOSITORY=$TOMCAT_HOME\/webapps\/uploadpath/g" $TOMCAT_HOME/webapps/mano/WEB-INF/classes/stream-config.properties
        #mano-vnfm
        ##mano-common.properties
 
        #mano-nfvo
        ##mano-common.properties
-       sed -i "s/^VNFD_SWITCH.*/VNFD_SWITCH=2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
-       sed -i "s/^CONFIGS_SWITCH.*/CONFIGS_SWITCH\ =\ 1/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
+       sed -i "s/^VNFD_SWITCH.*/VNFD_SWITCH=2/g" $TOMCAT_HOME/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
+       sed -i "s/^CONFIGS_SWITCH.*/CONFIGS_SWITCH\ =\ 1/g" $TOMCAT_HOME/webapps/mano-nfvo/WEB-INF/classes/mano-common.properties
        #oam_physical_network
 
        #mano-vim
        ##
        #sed -i "s/^PROVIDER_SWITCH.*/PROVIDER_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
-       sed -i '/\#PROVIDER_SWITCH/a\PROVIDER_SWITCH\ =\ 2' /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
-       sed -i "s/^PHYSICAL_NETWOR_SWITCH.*/PHYSICAL_NETWOR_SWITCH\ =\ 2/g" /usr/local/apache-tomcat-7.0.65/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
+       sed -i '/\#PROVIDER_SWITCH/a\PROVIDER_SWITCH\ =\ 2' $TOMCAT_HOME/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
+       sed -i "s/^PHYSICAL_NETWOR_SWITCH.*/PHYSICAL_NETWOR_SWITCH\ =\ 2/g" $TOMCAT_HOME/webapps/mano-vim/WEB-INF/classes/mano-vim.properties
        service tomcat restart
        echo "Done."
        break
